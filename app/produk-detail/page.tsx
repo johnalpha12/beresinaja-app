@@ -2,7 +2,7 @@
 
 import { ArrowLeft, Share2, Heart, Star, ShieldCheck } from "lucide-react"
 import { useState } from "react"
-import type { Screen } from "@/app/page"
+import type { Screen } from "@/types/navigation"
 
 interface Props {
   navigate: (s: Screen) => void
@@ -23,7 +23,7 @@ export default function ProductDetailScreen({ navigate }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header actions */}
-      <header className="flex items-center justify-between px-4 pt-10 pb-3 bg-background">
+      <header className="flex items-center justify-between px-4 lg:px-10 pt-10 pb-3 bg-background">
         <button
           onClick={() => navigate("marketplace")}
           aria-label="Kembali"
@@ -53,7 +53,7 @@ export default function ProductDetailScreen({ navigate }: Props) {
           </span>
         </div>
 
-        <div className="px-4 pt-4 flex flex-col gap-4">
+        <div className="px-4 lg:px-10 pt-4 flex flex-col gap-4">
           {/* Name & Price */}
           <div>
             <h1 className="text-lg font-bold text-foreground">iPhone 14 Pro Max</h1>
@@ -108,7 +108,7 @@ export default function ProductDetailScreen({ navigate }: Props) {
       </div>
 
       {/* Bottom Action */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background border-t border-border px-4 py-3 flex gap-3">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] md:max-w-[720px] lg:max-w-[1100px] bg-background border-t border-border px-4 lg:px-10 py-3 flex gap-3">
         <button className="flex-1 border-2 border-primary text-primary font-semibold text-sm rounded-2xl py-3 hover:bg-secondary transition-colors">
           Chat Toko
         </button>

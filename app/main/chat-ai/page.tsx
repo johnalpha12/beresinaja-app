@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { X, Send, Bot } from "lucide-react"
-import type { Screen } from "@/app/page"
+import type { Screen } from "@/types/navigation"
 
 interface Props {
   navigate: (s: Screen) => void
@@ -72,7 +72,7 @@ export default function ChatAIScreen({ navigate }: Props) {
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
       <header
-        className="flex items-center justify-between px-4 pt-10 pb-4"
+        className="flex items-center justify-between px-4 lg:px-10 pt-10 pb-4"
         style={{ background: "linear-gradient(135deg, #2196F3 0%, #29B6F6 100%)" }}
       >
         <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export default function ChatAIScreen({ navigate }: Props) {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+      <div className="flex-1 overflow-y-auto px-4 lg:px-10 py-4 flex flex-col gap-3">
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -122,7 +122,7 @@ export default function ChatAIScreen({ navigate }: Props) {
       </div>
 
       {/* Quick Replies */}
-      <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
+      <div className="px-4 lg:px-10 pb-2 flex gap-2 overflow-x-auto scrollbar-hide">
         {quickReplies.map((reply) => (
           <button
             key={reply}
@@ -135,7 +135,7 @@ export default function ChatAIScreen({ navigate }: Props) {
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-6 pt-2 flex items-center gap-3">
+      <div className="px-4 lg:px-10 pb-6 pt-2 flex items-center gap-3">
         <div className="flex-1 flex items-center bg-[#F5F7FA] border border-border rounded-full px-4 py-2.5 focus-within:border-primary transition-colors">
           <input
             type="text"

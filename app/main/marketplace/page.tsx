@@ -1,8 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { ArrowLeft, Search, SlidersHorizontal, Star, MapPin, ShieldCheck } from "lucide-react"
-import type { Screen } from "@/app/page"
+import {
+  ArrowLeft,
+  Search,
+  SlidersHorizontal,
+  Star,
+  MapPin,
+  ShieldCheck,
+} from "lucide-react"
+import type { Screen } from "@/types/navigation"
 import BottomNav from "../../../components/layout/BottomNav"
 
 interface Props {
@@ -12,7 +19,20 @@ interface Props {
 const categories = ["Semua", "HP", "Laptop", "Printer", "CCTV", "Aksesoris"]
 const conditions = ["Semua", "Baru", "Bekas"]
 
-const products = [
+type Product = {
+  id: number
+  name: string
+  price: string
+  rating: number
+  reviews: number
+  seller: string
+  distance: string
+  badge: string | null
+  category: string
+  condition: string
+}
+
+const products: Product[] = [
   {
     id: 1,
     name: "iPhone 14 Pro Max",
@@ -63,7 +83,7 @@ const products = [
   },
 ]
 
-// Simple product placeholder icons
+// PRODUCT ICON
 const ProductIcon = ({ category }: { category: string }) => {
   const icons: Record<string, string> = {
     HP: "📱",
@@ -72,8 +92,9 @@ const ProductIcon = ({ category }: { category: string }) => {
     CCTV: "📷",
     Aksesoris: "🎧",
   }
+
   return (
-    <span className="text-4xl" role="img" aria-label={category}>
+    <span className="text-4xl md:text-5xl" role="img">
       {icons[category] || "📦"}
     </span>
   )
@@ -84,52 +105,50 @@ export default function MarketplaceScreen({ navigate }: Props) {
   const [activeCondition, setActiveCondition] = useState("Semua")
 
   const filtered = products.filter((p) => {
-    const catMatch = activeCategory === "Semua" || p.category === activeCategory
-    const condMatch = activeCondition === "Semua" || p.condition === activeCondition
+    const catMatch =
+      activeCategory === "Semua" || p.category === activeCategory
+    const condMatch =
+      activeCondition === "Semua" || p.condition === activeCondition
     return catMatch && condMatch
   })
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F5F7FA]">
-      {/* Header */}
-      <header className="flex items-center gap-3 px-4 pt-10 pb-4 bg-background border-b border-border">
-        <button
-          onClick={() => navigate("home")}
-          aria-label="Kembali"
-          className="text-primary"
-        >
-          <ArrowLeft className="w-5 h-5" />
+    <div className="min-h-screen bg-[#F5F7FA] pb-28">
+
+      {/* HEADER */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border px-4 md:px-6 lg:px-8 py-4 flex items-center gap-3">
+        <button onClick={() => navigate("home")}>
+          <ArrowLeft className="w-5 h-5 text-primary" />
         </button>
-        <h1 className="text-base font-bold text-foreground flex-1 text-center pr-5">Marketplace</h1>
+
+        <h1 className="text-base md:text-lg font-bold flex-1 text-center pr-5">
+          Marketplace
+        </h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-24 flex flex-col gap-0">
-        {/* Search */}
-        <div className="bg-background px-4 py-3">
-          <div className="flex items-center gap-2 bg-[#F5F7FA] rounded-full px-4 py-2.5 border border-border">
-            <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-            <input
-              type="text"
-              placeholder="Cari produk..."
-              className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground outline-none"
-              aria-label="Cari produk"
-            />
-            <button aria-label="Filter">
-              <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+      <main className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 space-y-4 mt-4">
+
+        {/* SEARCH */}
+        <div className="flex items-center gap-2 bg-white rounded-full px-4 py-3 border border-border">
+          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
+          <input
+            type="text"
+            placeholder="Cari produk..."
+            className="flex-1 bg-transparent outline-none text-sm"
+          />
+          <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
         </div>
 
-        {/* Category Chips */}
-        <div className="bg-background px-4 pb-3 flex gap-2 overflow-x-auto scrollbar-hide">
+        {/* CATEGORY */}
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {categories.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
-              className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium border transition ${
                 activeCategory === cat
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:border-primary/40"
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white border-border"
               }`}
             >
               {cat}
@@ -137,16 +156,16 @@ export default function MarketplaceScreen({ navigate }: Props) {
           ))}
         </div>
 
-        {/* Condition Chips */}
-        <div className="bg-background px-4 pb-3 flex gap-2">
+        {/* CONDITION */}
+        <div className="flex gap-2">
           {conditions.map((cond) => (
             <button
               key={cond}
               onClick={() => setActiveCondition(cond)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+              className={`px-4 py-2 rounded-full text-sm font-medium border transition ${
                 activeCondition === cond
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-foreground border-border hover:border-primary/40"
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white border-border"
               }`}
             >
               {cond}
@@ -154,50 +173,75 @@ export default function MarketplaceScreen({ navigate }: Props) {
           ))}
         </div>
 
-        {/* Verified badge */}
-        <div className="mx-4 mb-3 bg-secondary border border-primary/20 rounded-2xl px-4 py-3 flex items-center gap-3">
+        {/* VERIFIED */}
+        <div className="bg-secondary border border-primary/20 rounded-2xl px-4 py-3 flex items-center gap-3">
           <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-foreground">Semua produk terverifikasi</p>
-            <p className="text-xs text-muted-foreground">Dilindungi garansi platform BeresinAja.</p>
+            <p className="text-sm font-semibold">
+              Semua produk terverifikasi
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Dilindungi garansi platform BeresinAja.
+            </p>
           </div>
         </div>
 
-        {/* Product Grid */}
-        <div className="grid grid-cols-2 gap-3 px-4">
+        {/* GRID */}
+        <div
+          className="
+          grid gap-4
+          grid-cols-2
+          sm:grid-cols-2
+          md:grid-cols-3
+          lg:grid-cols-4
+        "
+        >
           {filtered.map((product) => (
             <button
               key={product.id}
               onClick={() => navigate("product-detail")}
-              className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-md hover:border-primary/30 transition-all text-left"
+              className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-md transition text-left"
             >
-              {/* Product Image Area */}
-              <div className="relative bg-[#F5F7FA] flex items-center justify-center h-36">
+              <div className="relative bg-[#F5F7FA] flex items-center justify-center aspect-square">
                 <ProductIcon category={product.category} />
                 {product.badge && (
-                  <span className="absolute top-2 right-2 bg-secondary text-primary text-[10px] font-semibold px-2 py-0.5 rounded-full border border-primary/20">
+                  <span className="absolute top-2 right-2 bg-secondary text-primary text-[10px] font-semibold px-2 py-1 rounded-full">
                     {product.badge}
                   </span>
                 )}
               </div>
-              {/* Product Info */}
+
               <div className="p-3">
-                <p className="text-sm font-semibold text-foreground leading-tight">{product.name}</p>
-                <p className="text-sm font-bold text-primary mt-1">{product.price}</p>
+                <p className="text-sm font-semibold line-clamp-2">
+                  {product.name}
+                </p>
+
+                <p className="text-sm font-bold text-primary mt-1">
+                  {product.price}
+                </p>
+
                 <div className="flex items-center gap-1 mt-1">
                   <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs text-muted-foreground">{product.rating} ({product.reviews})</span>
+                  <span className="text-xs text-muted-foreground">
+                    {product.rating} ({product.reviews})
+                  </span>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">{product.seller}</p>
-                <div className="flex items-center gap-1 mt-0.5">
-                  <MapPin className="w-2.5 h-2.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">{product.distance}</span>
+
+                <p className="text-xs text-muted-foreground mt-1 truncate">
+                  {product.seller}
+                </p>
+
+                <div className="flex items-center gap-1 mt-1">
+                  <MapPin className="w-3 h-3 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">
+                    {product.distance}
+                  </span>
                 </div>
               </div>
             </button>
           ))}
         </div>
-      </div>
+      </main>
 
       <BottomNav active="marketplace" navigate={navigate} />
     </div>

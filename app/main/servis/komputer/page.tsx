@@ -1,7 +1,7 @@
 "use client"
 
 import { ArrowLeft, Search, Monitor, RefreshCw, MemoryStick, Wind, ChevronRight, Cpu } from "lucide-react"
-import type { Screen } from "@/app/page"
+import type { Screen } from "@/types/navigation"
 
 interface Props {
   navigate: (s: Screen) => void
@@ -39,7 +39,7 @@ export default function ServisKomputerScreen({ navigate }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <header className="flex items-center gap-3 px-4 pt-10 pb-4 bg-background border-b border-border">
+      <header className="flex items-center gap-3 px-4 lg:px-10 pt-10 pb-4 bg-background border-b border-border">
         <button
           onClick={() => navigate("servis-perangkat")}
           aria-label="Kembali"
@@ -50,7 +50,7 @@ export default function ServisKomputerScreen({ navigate }: Props) {
         <h1 className="text-base font-bold text-foreground flex-1 text-center pr-5">Servis Komputer</h1>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-6 px-4 pt-4 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto pb-6 px-4 lg:px-10 pt-4 flex flex-col gap-4">
         {/* Search */}
         <div className="flex items-center gap-2 bg-[#F5F7FA] rounded-full px-4 py-2.5 border border-border">
           <Search className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -80,7 +80,7 @@ export default function ServisKomputerScreen({ navigate }: Props) {
         {/* Service List */}
         <section>
           <h2 className="text-sm font-bold text-foreground mb-3">Jenis Layanan Servis</h2>
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {services.map(({ icon: Icon, title, desc }) => (
               <button
                 key={title}

@@ -1,7 +1,17 @@
 "use client"
 
-import { Bell, MessageCircle, Search, Wrench, ShoppingBag, DollarSign, MapPin, ChevronRight } from "lucide-react"
-import type { Screen } from "@/app/page"
+import {
+  Bell,
+  MessageCircle,
+  Search,
+  Wrench,
+  ShoppingBag,
+  DollarSign,
+  MapPin,
+  ChevronRight,
+  Star,
+} from "lucide-react"
+import type { Screen } from "@/types/navigation"
 import BottomNav from "../../../components/layout/BottomNav"
 
 interface Props {
@@ -15,115 +25,154 @@ const services = [
   { key: "tracking" as Screen, label: "Track Status", icon: MapPin },
 ]
 
+const recommendedTechnicians = [
+  { id: 1, name: "Ahmad Teknisi", rating: 4.8, specialty: "iPhone Specialist" },
+  { id: 2, name: "Budi Servis", rating: 4.9, specialty: "Samsung Expert" },
+  { id: 3, name: "Citra Electronics", rating: 4.7, specialty: "Laptop & PC" },
+  { id: 4, name: "Deni Repair", rating: 4.8, specialty: "All Brands" },
+]
+
 export default function HomeScreen({ navigate }: Props) {
   return (
-    <div className="flex flex-col min-h-screen bg-[#F5F7FA]">
-      {/* Header */}
-      <header className="bg-background px-4 pt-10 pb-3">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm relative">
-              J
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-primary rounded-full border-2 border-background flex items-center justify-center">
-                <svg className="w-2 h-2 text-primary-foreground" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                  <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground leading-tight">John Alpha</p>
-              <p className="text-xs text-muted-foreground">Medan</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("chat-ai")}
-              aria-label="Pesan"
-              className="text-primary"
-            >
-              <MessageCircle className="w-5 h-5" />
-            </button>
-            <button aria-label="Notifikasi" className="relative text-primary">
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" aria-hidden="true" />
-            </button>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#F5F7FA]">
 
-        {/* Search */}
-        <div className="flex items-center gap-2 bg-[#F5F7FA] rounded-full px-4 py-2.5 border border-border">
-          <Search className="w-4 h-4 text-muted-foreground shrink-0" />
-          <input
-            type="text"
-            placeholder="Cari teknisi, toko, atau produk..."
-            className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground outline-none"
-            aria-label="Cari teknisi, toko, atau produk"
-          />
+      {/* HEADER */}
+      <header className="sticky top-0 z-50 bg-background shadow-sm px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold relative">
+                J
+                <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-background" />
+              </div>
+
+              <div>
+                <p className="font-bold">John Alpha</p>
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <MapPin className="w-4 h-4" />
+                  Medan
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate("chat-ai")}
+                className="p-2 hover:bg-primary/10 rounded-full"
+              >
+                <MessageCircle className="w-6 h-6 text-primary" />
+              </button>
+
+              <button className="relative p-2 hover:bg-primary/10 rounded-full">
+                <Bell className="w-6 h-6 text-primary" />
+                <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-background" />
+              </button>
+            </div>
+          </div>
+
+          {/* SEARCH */}
+          <div className="flex items-center gap-2 bg-white rounded-full px-4 py-3 border border-border focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all">
+            <Search className="w-5 h-5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Cari teknisi, toko, atau produk..."
+              className="w-full bg-transparent outline-none"
+            />
+          </div>
         </div>
       </header>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto pb-24 px-4 pt-4 flex flex-col gap-5">
-        {/* Promo Banner */}
+      {/* CONTENT (SCROLL DI WINDOW) */}
+      <main className="pb-28 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-6 space-y-6">
+
+        {/* PROMO */}
         <div
           className="rounded-2xl p-5 relative overflow-hidden"
           style={{ background: "linear-gradient(135deg, #2196F3 0%, #29B6F6 100%)" }}
         >
-          <span className="inline-block bg-white/20 text-white text-xs font-medium px-3 py-1 rounded-full mb-2">Promo Spesial</span>
-          <h2 className="text-white text-xl font-bold leading-snug mb-1">Gratis Jemput-Antar!</h2>
-          <p className="text-white/80 text-xs mb-4 leading-relaxed">Untuk servis pertama kamu. Berlaku hingga akhir bulan.</p>
-          <button className="bg-white text-primary text-sm font-semibold px-5 py-2 rounded-full hover:opacity-90 transition-opacity">
+          <span className="inline-block bg-white/20 text-white text-xs px-3 py-1 rounded-full mb-2">
+            Promo Spesial
+          </span>
+
+          <h2 className="text-white text-xl font-bold">
+            Gratis Jemput-Antar!
+          </h2>
+
+          <p className="text-white/80 text-xs mb-4 max-w-[250px]">
+            Untuk servis pertama kamu. Berlaku hingga akhir bulan.
+          </p>
+
+          <button className="bg-white text-primary text-sm font-semibold px-5 py-2 rounded-full">
             Pakai Sekarang
           </button>
-          {/* Decorative circles */}
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full" aria-hidden="true" />
-          <div className="absolute -right-2 bottom-0 w-16 h-16 bg-white/10 rounded-full" aria-hidden="true" />
         </div>
 
-        {/* Services */}
+        {/* SERVICES */}
         <section>
-          <h2 className="text-sm font-bold text-foreground mb-3">Layanan Kami</h2>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="flex justify-between mb-4">
+            <h2 className="font-bold">Layanan Kami</h2>
+            <button
+              onClick={() => navigate("servis-perangkat")}
+              className="text-primary text-sm flex items-center gap-1"
+            >
+              Lihat Semua <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {services.map(({ key, label, icon: Icon }) => (
               <button
                 key={key}
                 onClick={() => navigate(key)}
-                className="bg-card rounded-2xl border border-border p-4 flex flex-col items-center gap-2 hover:border-primary/30 hover:shadow-sm transition-all"
+                className="bg-card rounded-2xl border p-4 flex flex-col items-center gap-2 hover:shadow-md transition"
               >
-                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-                  <Icon className="w-5 h-5 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center">
+                  <Icon className="w-6 h-6 text-primary" />
                 </div>
-                <span className="text-xs font-medium text-foreground text-center">{label}</span>
+                <span className="text-sm font-medium text-center">
+                  {label}
+                </span>
               </button>
             ))}
           </div>
         </section>
 
-        {/* Active Service */}
+        {/* TEKNISI */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-foreground">Servis Aktif</h2>
+          <div className="flex justify-between mb-4">
+            <h2 className="font-bold">Teknisi Rekomendasi</h2>
             <button
-              onClick={() => navigate("tracking")}
-              className="text-xs text-primary font-medium"
+              onClick={() => navigate("teknisi")}
+              className="text-primary text-sm flex items-center gap-1"
             >
-              Lihat Detail
+              Lihat Semua <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="bg-card rounded-2xl border border-border p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold text-foreground">Ganti LCD iPhone 13 Pro</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Teknisi: Ahmad - Sedang diperbaiki</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="bg-secondary text-primary text-xs font-semibold px-3 py-1 rounded-full">Dikerjakan</span>
-                <span className="text-xs text-muted-foreground">ETA: 2 jam lagi</span>
-              </div>
-            </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recommendedTechnicians.map((tech) => (
+              <button
+                key={tech.id}
+                onClick={() => navigate("teknisi-detail")}
+                className="bg-card rounded-2xl border p-4 flex items-center gap-3 hover:shadow-md transition"
+              >
+                <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center font-bold text-primary">
+                  {tech.name.charAt(0)}
+                </div>
+
+                <div className="text-left">
+                  <p className="font-semibold">{tech.name}</p>
+                  <div className="flex items-center gap-1 text-sm">
+                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                    {tech.rating}
+                  </div>
+                </div>
+              </button>
+            ))}
           </div>
         </section>
-      </div>
+
+      </main>
 
       <BottomNav active="home" navigate={navigate} />
     </div>

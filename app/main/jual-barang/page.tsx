@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { ArrowLeft, Camera, HelpCircle, MapPin } from "lucide-react"
-import type { Screen } from "@/app/page"
+import type { Screen } from "@/types/navigation"
 
 interface Props {
   navigate: (s: Screen) => void
@@ -18,7 +18,7 @@ export default function JualBarangScreen({ navigate }: Props) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-10 pb-4 bg-background border-b border-border">
+      <header className="flex items-center justify-between px-4 lg:px-10 pt-10 pb-4 bg-background border-b border-border">
         <button
           onClick={() => navigate("home")}
           aria-label="Kembali"
@@ -32,7 +32,7 @@ export default function JualBarangScreen({ navigate }: Props) {
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto pb-24 px-4 pt-5 flex flex-col gap-5">
+      <div className="flex-1 overflow-y-auto pb-24 px-4 lg:px-10 pt-5 flex flex-col gap-5">
         {/* Photo Upload */}
         <section>
           <p className="text-sm font-semibold text-foreground mb-2">Foto Barang</p>
@@ -164,7 +164,7 @@ export default function JualBarangScreen({ navigate }: Props) {
       </div>
 
       {/* Submit */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-background border-t border-border px-4 py-3">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] sm:max-w-[540px] md:max-w-[720px] lg:max-w-[1100px] bg-background border-t border-border px-4 lg:px-10 py-3">
         <button className="w-full bg-primary text-primary-foreground font-semibold text-sm rounded-2xl py-3.5 hover:opacity-90 transition-opacity">
           Daftarkan Barang
         </button>
