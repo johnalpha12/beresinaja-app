@@ -10,6 +10,8 @@ export type Screen =
   | "servis-komputer"
   | "marketplace"
   | "product-detail"
+  | "checkout"
+  | "order-success"
   | "tracking"
   | "profile"
   | "chat-ai"
@@ -27,6 +29,8 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   "servis-komputer": "/servis-komputer",
   marketplace: "/marketplace",
   "product-detail": "/product-detail",
+  checkout: "/checkout",
+  "order-success": "/orderan-berhasil",
   tracking: "/tracking",
   profile: "/profile",
   "chat-ai": "/chat-ai",

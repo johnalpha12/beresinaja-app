@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { AuthProvider } from '@/context/AuthContext'
 
 const inter = Inter({
   subsets: ['latin'],
@@ -11,7 +12,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'BeresinAja - Servis Perangkat & Marketplace',
   description: 'Layanan servis perangkat elektronik terpercaya. Ganti LCD, upgrade RAM, install ulang OS, dan beli/jual perangkat bekas di BeresinAja.',
-  generator: 'v0.app',
+  generator: 'beresin-aja',
 }
 
 export const viewport: Viewport = {
@@ -30,7 +31,7 @@ export default function RootLayout({
     <html lang="id">
       <body className={`${inter.variable} font-sans antialiased`}>
         <div className="app-shell">
-          {children}
+        <AuthProvider>{children}</AuthProvider>
         </div>
         <Analytics />
       </body>
