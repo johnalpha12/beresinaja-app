@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Eye, EyeOff, Mail } from "lucide-react" 
 import type { Screen } from "@/types/navigation" 
 import Image from "next/image" 
-import { loginUser } from "@/lib/auth"
+import { loginUser, loginWithGoogle } from "@/lib/auth"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
 import { screenToPath } from "@/types/navigation"
@@ -66,6 +66,33 @@ export default function LoginPage() {
         setError("Terlalu banyak percobaan. Coba lagi nanti")
       } else {
         setError("Gagal masuk. Silakan coba lagi.")
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleLogin = async () => {
+    setError("")
+    setIsLoading(true)
+
+    try {
+      const user = await loginWithGoogle()
+
+      if (user) {
+        navigate("home")
+      }
+    } catch (error: any) {
+      console.error("Google login error:", error)
+
+      if (error.code === "auth/popup-closed-by-user") {
+        setError("Login Google dibatalkan")
+      } else if (error.code === "auth/account-exists-with-different-credential") {
+        setError("Email ini sudah terdaftar dengan metode login lain")
+      } else if (error.code === "auth/popup-blocked") {
+        setError("Popup Google diblokir browser. Izinkan popup lalu coba lagi")
+      } else {
+        setError("Gagal masuk dengan Google. Silakan coba lagi.")
       }
     } finally {
       setIsLoading(false)
@@ -172,6 +199,7 @@ export default function LoginPage() {
           {/* Google Login */}
           <button 
             type="button"
+            onClick={handleGoogleLogin}
             className="w-full border border-border rounded-xl sm:rounded-2xl py-2.5 sm:py-3 text-primary font-semibold text-xs sm:text-sm hover:bg-accent transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
             disabled={isLoading}
           > 

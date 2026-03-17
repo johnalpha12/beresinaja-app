@@ -3,7 +3,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react"
 import { User } from "firebase/auth"
-import { subscribeToAuthChanges, logoutUser } from "@/lib/auth"
+import { subscribeToAuthChanges, logoutUser, ensureUserProfile } from "@/lib/auth"
 import { doc, getDoc } from "firebase/firestore"
 import { db } from "@/lib/firebase"
 
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (user) {
         // Ambil data tambahan dari Firestore
         try {
+          await ensureUserProfile(user)
           const snapshot = await getDoc(doc(db, "users", user.uid))
           if (snapshot.exists()) {
             setUserData(snapshot.data() as UserData)
