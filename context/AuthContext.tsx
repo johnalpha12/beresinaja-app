@@ -1,31 +1,14 @@
-// contexts/AuthContext.tsx
 "use client"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import { User } from "firebase/auth"
-import { subscribeToAuthChanges, logoutUser, ensureUserProfile } from "@/lib/auth"
-import { doc, getDoc } from "firebase/firestore"
-import { db } from "@/lib/firebase"
-
-interface UserData {
-  uid: string
-  fullName: string
-  email: string
-  phone: string
-  role: "pengguna" | "teknisi"
-  createdAt: number
-  city?: string
-  stats?: {
-    services: number
-    transactions: number
-    sellItems: number
-  }
-  premium?: {
-    isActive: boolean
-    expiresAt: number | null
-    benefits: string[]
-  }
-}
+import type { User } from "firebase/auth"
+import {
+  completeGoogleRedirectLogin,
+  subscribeToAuthChanges,
+  logoutUser,
+  ensureUserProfile,
+} from "@/lib/auth"
+import type { UserData } from "@/types/user"
 
 interface AuthContextType {
   user: User | null
@@ -42,33 +25,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthChanges(async (user) => {
-      setUser(user)
-      
-      if (user) {
-        // Ambil data tambahan dari Firestore
-        try {
-          await ensureUserProfile(user)
-          const snapshot = await getDoc(doc(db, "users", user.uid))
-          if (snapshot.exists()) {
-            setUserData(snapshot.data() as UserData)
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error)
-        }
-      } else {
-        setUserData(null)
-      }
-      
-      setLoading(false)
-    })
+    let isMounted = true
 
-    return () => unsubscribe()
+    const syncUserProfile = async (nextUser: User | null) => {
+      if (!isMounted) {
+        return
+      }
+
+      setLoading(true)
+      setUser(nextUser)
+
+      if (!nextUser) {
+        setUserData(null)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const profile = await ensureUserProfile(nextUser)
+
+        if (!isMounted) {
+          return
+        }
+
+        setUserData(profile)
+      } catch (error) {
+        console.error("Error fetching user data:", error)
+
+        if (!isMounted) {
+          return
+        }
+
+        setUserData(null)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    let unsubscribe = () => {}
+
+    ;(async () => {
+      try {
+        await completeGoogleRedirectLogin()
+      } catch (error) {
+        console.error("Error completing Google redirect login:", error)
+      }
+
+      unsubscribe = subscribeToAuthChanges((nextUser) => {
+        void syncUserProfile(nextUser)
+      })
+    })()
+
+    return () => {
+      isMounted = false
+      unsubscribe()
+    }
   }, [])
 
   const logout = async () => {
     await logoutUser()
-    // State akan otomatis ter-update via subscribeToAuthChanges
   }
 
   return (
@@ -80,8 +97,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
+
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
+
   return context
 }

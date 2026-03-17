@@ -2,41 +2,73 @@ export type Screen =
   | "splash"
   | "login"
   | "register"
-  | "forgot-password"
+  | "forgotPassword"
   | "home"
+  | "serviceHistory"
+  | "transactionHistory"
   | "teknisi"
-  | "teknisi-detail"
-  | "servis-perangkat"
-  | "servis-komputer"
+  | "teknisiDetail"
+  | "servisPerangkat"
+  | "servisKomputer"
   | "marketplace"
-  | "product-detail"
+  | "productDetail"
   | "checkout"
-  | "order-success"
+  | "orderSuccess"
   | "tracking"
   | "profile"
-  | "chat-ai"
-  | "jual-barang"
+  | "chatAi"
+  | "jualBarang"
+
+const LEGACY_SCREEN_ALIASES = {
+  "forgot-password": "forgotPassword",
+  "service-history": "serviceHistory",
+  "transaction-history": "transactionHistory",
+  "teknisi-detail": "teknisiDetail",
+  "servis-perangkat": "servisPerangkat",
+  "servis-komputer": "servisKomputer",
+  "product-detail": "productDetail",
+  "order-success": "orderSuccess",
+  "chat-ai": "chatAi",
+  "jual-barang": "jualBarang",
+} as const
+
+export type LegacyScreen = keyof typeof LEGACY_SCREEN_ALIASES
+export type ScreenLike = Screen | LegacyScreen
 
 export const SCREEN_PATHS: Record<Screen, string> = {
   splash: "/splash",
   login: "/login",
   register: "/register",
-  "forgot-password": "/forgot-password",
-  home: "/home",
+  forgotPassword: "/forgot-password",
+  home: "/beranda",
+  serviceHistory: "/riwayat-servis",
+  transactionHistory: "/riwayat-transaksi",
   teknisi: "/teknisi",
-  "teknisi-detail": "/teknisi-detail",
-  "servis-perangkat": "/servis-perangkat",
-  "servis-komputer": "/servis-komputer",
+  teknisiDetail: "/detail-teknisi",
+  servisPerangkat: "/servis-perangkat",
+  servisKomputer: "/servis-komputer",
   marketplace: "/marketplace",
-  "product-detail": "/product-detail",
+  productDetail: "/detail-produk",
   checkout: "/checkout",
-  "order-success": "/orderan-berhasil",
-  tracking: "/tracking",
-  profile: "/profile",
-  "chat-ai": "/chat-ai",
-  "jual-barang": "/jual-barang",
+  orderSuccess: "/pesanan-berhasil",
+  tracking: "/pelacakan",
+  profile: "/profil",
+  chatAi: "/chat-ai",
+  jualBarang: "/jual-barang",
 }
 
-export function screenToPath(screen: Screen) {
-  return SCREEN_PATHS[screen]
+export function normalizeScreen(screen: ScreenLike): Screen {
+  if (screen in LEGACY_SCREEN_ALIASES) {
+    return LEGACY_SCREEN_ALIASES[screen as LegacyScreen]
+  }
+
+  return screen as Screen
+}
+
+export function screenToPath(screen: ScreenLike) {
+  return SCREEN_PATHS[normalizeScreen(screen)]
+}
+
+export function technicianDetailPath(technicianId: string) {
+  return `${SCREEN_PATHS.teknisiDetail}/${encodeURIComponent(technicianId)}`
 }

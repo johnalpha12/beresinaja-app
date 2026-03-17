@@ -23,7 +23,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!loading && user) {
-      router.replace("/home")
+      router.replace(screenToPath("home"))
     }
   }, [loading, user, router])
 
@@ -103,7 +103,14 @@ export default function LoginPage() {
     <div className="flex flex-col min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
       {/* Logo */}
       <div className="flex flex-col items-center pt-4 sm:pt-6 pb-6 sm:pb-8"> 
-        <Image src="/logo.png" alt="BeresinAja" width={180} height={48} /> 
+        <Image
+          src="/logo.png"
+          alt="BeresinAja"
+          width={180}
+          height={48}
+          priority
+          loading="eager"
+        /> 
       </div> 
 
       {/* Title */}
@@ -148,7 +155,7 @@ export default function LoginPage() {
               </label> 
               <button 
                 type="button"
-                onClick={() => navigate("forgot-password")} 
+                onClick={() => navigate("forgotPassword")} 
                 className="text-xs sm:text-sm text-primary font-medium hover:underline"
                 disabled={isLoading}
               > 

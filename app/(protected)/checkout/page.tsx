@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin, Truck, Wallet, CreditCard, Building2, Plus, Edit2, Check } from "lucide-react";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { PageLoader } from "@/components/ui/PageLoader";
+import { screenToPath } from "@/types/navigation";
 
 type ShippingMethod = "regular" | "express";
 type PaymentMethod = "bank" | "ewallet" | "cod";
@@ -44,7 +44,7 @@ type PaymentOption = {
 export default function CheckoutPage() {
   const router = useRouter();
   const onBack = () => router.back();
-  const onSuccess = () => router.push("/orderan-berhasil");
+  const onSuccess = () => router.push(screenToPath("orderSuccess"));
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod>("regular");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -54,27 +54,37 @@ export default function CheckoutPage() {
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
   const [platformFee, setPlatformFee] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadCheckout() {
       try {
-        const configSnap = await getDoc(doc(db, "content", "checkout"));
-        if (configSnap.exists()) {
-          const data = configSnap.data() as {
-            product?: CheckoutProduct;
-            deliveryAddress?: DeliveryAddress;
-            shippingOptions?: ShippingOption[];
-            paymentOptions?: PaymentOption[];
-            platformFee?: number;
-          };
-          setProduct(data.product || null);
-          setDeliveryAddress(data.deliveryAddress || null);
-          setShippingOptions(data.shippingOptions || []);
-          setPaymentOptions(data.paymentOptions || []);
-          setPlatformFee(data.platformFee || 0);
+        setLoading(true);
+        const response = await fetch("/api/content/checkout", {
+          cache: "no-store",
+        });
+
+        if (!response.ok) {
+          throw new Error("Gagal memuat data checkout.");
         }
+
+        const data = (await response.json()) as {
+          product?: CheckoutProduct;
+          deliveryAddress?: DeliveryAddress;
+          shippingOptions?: ShippingOption[];
+          paymentOptions?: PaymentOption[];
+          platformFee?: number;
+        };
+
+        setProduct(data.product || null);
+        setDeliveryAddress(data.deliveryAddress || null);
+        setShippingOptions(data.shippingOptions || []);
+        setPaymentOptions(data.paymentOptions || []);
+        setPlatformFee(data.platformFee || 0);
       } catch (error) {
         console.error("Failed to load checkout data:", error);
+      } finally {
+        setLoading(false);
       }
     }
 
@@ -107,6 +117,10 @@ export default function CheckoutPage() {
     ewallet: Wallet,
     cod: CreditCard,
   } as const;
+
+  if (loading) {
+    return <PageLoader message="Memuat checkout..." />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">

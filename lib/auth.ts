@@ -1,5 +1,6 @@
 import {
   createUserWithEmailAndPassword,
+  getRedirectResult,
   signInWithEmailAndPassword,
   signOut,
   User,
@@ -8,39 +9,42 @@ import {
   signInWithPopup,
   signInWithRedirect,
 } from "firebase/auth"
-import { doc, getDoc, setDoc } from "firebase/firestore"
-import { auth, db } from "./firebase"
+import { auth } from "./firebase"
+import type { UserData, UserRole } from "@/types/user"
 
-type UserRole = "pengguna" | "teknisi"
-
-const defaultStats = {
-  services: 0,
-  transactions: 0,
-  sellItems: 0,
+type ProfileApiResponse = {
+  error?: string
+  profile?: UserData
 }
 
-const defaultPremium = {
-  isActive: false,
-  expiresAt: null,
-  benefits: [
-    "Gratis jemput-antar unlimited",
-    "Garansi extended 60 hari",
-    "Prioritas servis lebih cepat",
-  ],
-}
+async function buildAuthHeaders(user: User, forceRefresh = false) {
+  const token = await user.getIdToken(forceRefresh)
 
-function formatFallbackName(email?: string | null) {
-  const emailName = email?.split("@")[0]?.trim()
-
-  if (!emailName) {
-    return "Pengguna"
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
   }
+}
 
-  return emailName
-    .split(/[._-]+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
+async function requestUserProfile(
+  user: User,
+  overrides: Partial<{
+    fullName: string
+    email: string
+    phone: string
+    role: UserRole
+  }>,
+  forceRefresh = false
+) {
+  const response = await fetch("/api/me/profile", {
+    method: "POST",
+    headers: await buildAuthHeaders(user, forceRefresh),
+    body: JSON.stringify(overrides),
+  })
+
+  const data = (await response.json().catch(() => ({}))) as ProfileApiResponse
+
+  return { response, data }
 }
 
 export async function ensureUserProfile(
@@ -52,26 +56,23 @@ export async function ensureUserProfile(
     role: UserRole
   }> = {}
 ) {
-  const userRef = doc(db, "users", user.uid)
-  const snapshot = await getDoc(userRef)
+  let { response, data } = await requestUserProfile(user, overrides)
 
-  if (snapshot.exists()) {
-    return
+  if (response.status === 401) {
+    ;({ response, data } = await requestUserProfile(user, overrides, true))
   }
 
-  await setDoc(userRef, {
-    uid: user.uid,
-    fullName:
-      overrides.fullName?.trim() ||
-      user.displayName?.trim() ||
-      formatFallbackName(user.email),
-    email: overrides.email ?? user.email ?? "",
-    phone: overrides.phone ?? "",
-    role: overrides.role ?? "pengguna",
-    createdAt: Date.now(),
-    stats: defaultStats,
-    premium: defaultPremium,
-  })
+  if (!response.ok || !data.profile) {
+    throw new Error(data.error || "Gagal memastikan profil pengguna.")
+  }
+
+  return data.profile
+}
+
+export async function completeGoogleRedirectLogin() {
+  const result = await getRedirectResult(auth)
+
+  return result?.user || null
 }
 
 /* REGISTER */
@@ -117,7 +118,6 @@ export async function loginWithGoogle() {
 
   try {
     const userCredential = await signInWithPopup(auth, provider)
-    await ensureUserProfile(userCredential.user)
     return userCredential.user
   } catch (error) {
     const firebaseError = error as { code?: string }

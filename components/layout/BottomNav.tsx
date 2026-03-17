@@ -1,8 +1,10 @@
 import { Home, ShoppingBag, MapPin, User } from "lucide-react"
 import type { Screen } from "@/types/navigation"
 
+type BottomNavScreen = Extract<Screen, "home" | "marketplace" | "tracking" | "profile">
+
 interface Props {
-  active: "home" | "marketplace" | "tracking" | "profile"
+  active: BottomNavScreen
   navigate: (s: Screen) => void
 }
 
@@ -11,7 +13,11 @@ const items = [
   { key: "marketplace" as const, label: "Belanja", icon: ShoppingBag },
   { key: "tracking" as const, label: "Tracking", icon: MapPin },
   { key: "profile" as const, label: "Profil", icon: User },
-]
+] satisfies ReadonlyArray<{
+  key: BottomNavScreen
+  label: string
+  icon: typeof Home
+}>
 
 export default function BottomNav({ active, navigate }: Props) {
   return (

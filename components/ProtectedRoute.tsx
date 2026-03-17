@@ -3,8 +3,8 @@
 
 import { useEffect } from "react"
 import { useAuth } from "@/context/AuthContext"
-import { useUserData } from "@/hooks/useUserData"
 import { useRouter } from "next/navigation" // untuk Next.js App Router
+import { PageLoader } from "@/components/ui/PageLoader"
 
 interface Props {
   children: React.ReactNode
@@ -12,9 +12,7 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children, requiredRole }: Props) {
-  const { user, loading: authLoading } = useAuth()
-  const { userData, loading: userDataLoading } = useUserData()
-  const loading = authLoading || userDataLoading
+  const { user, userData, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
@@ -35,14 +33,7 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
 
   // Tampilkan loading
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Memuat...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader message="Memverifikasi akses..." />
   }
 
   // Jika tidak ada user, jangan render apapun (redirect sudah di-handle di useEffect)

@@ -80,7 +80,14 @@ export default function RegisterPage() {
     <div className="flex flex-col min-h-screen bg-background px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12 overflow-y-auto">
       {/* Logo */}
       <div className="flex flex-col items-center pt-2 sm:pt-4 pb-4 sm:pb-6"> 
-        <Image src="/logo.png" alt="BeresinAja" width={180} height={48} /> 
+        <Image
+          src="/logo.png"
+          alt="BeresinAja"
+          width={180}
+          height={48}
+          priority
+          loading="eager"
+        /> 
       </div> 
 
       <h1 className="text-xl sm:text-2xl font-bold text-foreground text-center mb-4 sm:mb-6">Register</h1> 
