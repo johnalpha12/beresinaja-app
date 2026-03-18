@@ -13,16 +13,32 @@ interface Message {
   time: string
 }
 
+type ChatHistoryItem = {
+  role: "user" | "model"
+  text: string
+}
+
+const INITIAL_MESSAGE_ID = 1
+
 function formatTime(date: Date) {
   return date.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })
+}
+
+function toChatHistory(messages: Message[]): ChatHistoryItem[] {
+  return messages
+    .filter((message) => message.id !== INITIAL_MESSAGE_ID)
+    .map((message) => ({
+      role: message.sender === "user" ? "user" : "model",
+      text: message.text,
+    }))
 }
 
 export default function ChatAiPage() {
   const router = useRouter()
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
-  const [messages, setMessages] = useState<Message[]>([
+  const [messages, setMessages] = useState<Message[]>(() => [
     {
-      id: 1,
+      id: INITIAL_MESSAGE_ID,
       text: "Halo! Saya Asisten BeresinAja. Ada yang bisa saya bantu? Anda bisa bertanya tentang servis, teknisi, harga, atau produk yang tersedia.",
       sender: "bot",
       time: formatTime(new Date()),
@@ -32,7 +48,6 @@ export default function ChatAiPage() {
   const [quickReplies, setQuickReplies] = useState<string[]>([])
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState("")
-  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -96,21 +111,18 @@ export default function ChatAiPage() {
         },
         body: JSON.stringify({
           message: trimmedText,
-          previousResponseId,
+          history: toChatHistory(messages),
         }),
       })
 
       const data = (await response.json()) as {
         text?: string
         error?: string
-        responseId?: string | null
       }
 
       if (!response.ok || !data.text) {
         throw new Error(data.error || "Gagal mendapatkan balasan.")
       }
-
-      setPreviousResponseId(data.responseId ?? null)
 
       const botMsg: Message = {
         id: Date.now() + 1,

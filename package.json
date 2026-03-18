@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "seed:firestore": "node scripts/seed-firestore.js",
+    "netlify:firebase-admin-env": "node scripts/print-netlify-firebase-admin-env.js",
     "deploy:firestore-rules": "npx --yes firebase-tools deploy --only firestore:rules --project beresin-aja"
   },
   "dependencies": {

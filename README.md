@@ -32,6 +32,15 @@ For Netlify, set one of these options:
 
 `FIREBASE_PRIVATE_KEY` should keep newline escapes as `\n` when stored in the environment.
 
+## AI Chat
+
+Chat AI now uses the Gemini API through `/api/chat`.
+
+Set these server environment variables:
+
+- `GEMINI_API_KEY`: Google AI Studio API key for Gemini
+- `GEMINI_MODEL`: optional model override, defaults to `gemini-2.5-flash`
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
