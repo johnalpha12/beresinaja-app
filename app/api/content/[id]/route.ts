@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { adminDb } from "@/lib/firebase-admin"
+import { getAdminDb } from "@/lib/firebase-admin"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 type RouteContext = {
   params: Promise<{
@@ -11,6 +12,7 @@ type RouteContext = {
 
 export async function GET(_request: Request, context: RouteContext) {
   try {
+    const adminDb = getAdminDb()
     const { id } = await context.params
     const documentId = decodeURIComponent(id)
     const snap = await adminDb.collection("content").doc(documentId).get()

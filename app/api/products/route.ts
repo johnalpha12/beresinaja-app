@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import { adminDb } from "@/lib/firebase-admin"
+import { getAdminDb } from "@/lib/firebase-admin"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 export async function GET() {
   try {
+    const adminDb = getAdminDb()
     const snap = await adminDb.collection("products").get()
 
     const products = snap.docs.map((productDoc) => ({

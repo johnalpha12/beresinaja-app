@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { adminDb } from "@/lib/firebase-admin"
+import { getAdminDb } from "@/lib/firebase-admin"
 
 export const runtime = "nodejs"
+export const dynamic = "force-dynamic"
 
 type TechnicianReference =
   | string
@@ -55,6 +56,7 @@ function getFallbackTechnician(reference: TechnicianReference, technicianId: str
 
 export async function GET() {
   try {
+    const adminDb = getAdminDb()
     const homeSnap = await adminDb.collection("content").doc("home").get()
 
     if (!homeSnap.exists) {

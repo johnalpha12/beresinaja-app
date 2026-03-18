@@ -20,6 +20,18 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Firebase Admin
+
+Server-side Firebase access supports either a local `firebase-adminsdk.json` file or environment variables.
+
+For Netlify, set one of these options:
+
+- `FIREBASE_ADMINSDK_JSON_BASE64`: base64 of the full service account JSON
+- `FIREBASE_ADMINSDK_JSON`: raw JSON string of the full service account
+- `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`
+
+`FIREBASE_PRIVATE_KEY` should keep newline escapes as `\n` when stored in the environment.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

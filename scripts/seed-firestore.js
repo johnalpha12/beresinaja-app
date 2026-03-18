@@ -1,17 +1,72 @@
 const path = require("path");
 const fs = require("fs");
 const admin = require("firebase-admin");
+const { loadEnvConfig } = require("@next/env");
 
-const serviceAccountPath =
-  process.env.FIREBASE_ADMINSDK_PATH ||
-  path.join(__dirname, "..", "firebase-adminsdk.json");
+const projectDir = path.join(__dirname, "..");
 
-if (!fs.existsSync(serviceAccountPath)) {
-  console.error("Service account file not found:", serviceAccountPath);
-  process.exit(1);
+loadEnvConfig(projectDir);
+
+function parseServiceAccount(rawValue, source) {
+  try {
+    return JSON.parse(rawValue);
+  } catch (error) {
+    console.error(`Service account from ${source} is not valid JSON.`, error);
+    process.exit(1);
+  }
 }
 
-const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, "utf8"));
+function loadServiceAccountFromEnv() {
+  const encodedJson = process.env.FIREBASE_ADMINSDK_JSON_BASE64?.trim();
+
+  if (encodedJson) {
+    return parseServiceAccount(
+      Buffer.from(encodedJson, "base64").toString("utf8"),
+      "FIREBASE_ADMINSDK_JSON_BASE64"
+    );
+  }
+
+  const inlineJson = process.env.FIREBASE_ADMINSDK_JSON?.trim();
+
+  if (inlineJson) {
+    return parseServiceAccount(inlineJson, "FIREBASE_ADMINSDK_JSON");
+  }
+
+  const projectId =
+    process.env.FIREBASE_PROJECT_ID?.trim() ||
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  if (projectId && clientEmail && privateKey?.trim()) {
+    return {
+      projectId,
+      clientEmail,
+      privateKey,
+    };
+  }
+
+  return null;
+}
+
+function loadServiceAccountFromFile() {
+  const serviceAccountPath =
+    process.env.FIREBASE_ADMINSDK_PATH ||
+    path.join(projectDir, "firebase-adminsdk.json");
+
+  if (!fs.existsSync(serviceAccountPath)) {
+    console.error("Service account file not found:", serviceAccountPath);
+    process.exit(1);
+  }
+
+  return parseServiceAccount(
+    fs.readFileSync(serviceAccountPath, "utf8"),
+    serviceAccountPath
+  );
+}
+
+const serviceAccount =
+  loadServiceAccountFromEnv() || loadServiceAccountFromFile();
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),

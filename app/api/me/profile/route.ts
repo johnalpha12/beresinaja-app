@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { adminAuth, adminDb } from "@/lib/firebase-admin"
+import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
 import type { UserData, UserRole } from "@/types/user"
 
 export const runtime = "nodejs"
@@ -70,6 +70,7 @@ function decodeJwtPayload(token: string) {
 
 async function resolveAuthenticatedUser(token: string): Promise<AuthenticatedUser> {
   try {
+    const adminAuth = getAdminAuth()
     const decodedToken = await adminAuth.verifyIdToken(token)
 
     return {
@@ -168,6 +169,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const adminDb = getAdminDb()
     const userRef = adminDb.collection("users").doc(authenticatedUser.uid)
     const snapshot = await userRef.get()
     const existing = snapshot.exists
