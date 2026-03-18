@@ -18,6 +18,27 @@ type ServiceAccountInput = ServiceAccount & {
   private_key?: string
 }
 
+export class FirebaseAdminConfigError extends Error {
+  constructor(message: string, options?: ErrorOptions) {
+    super(message, options)
+    this.name = "FirebaseAdminConfigError"
+  }
+}
+
+export function isFirebaseAdminConfigError(error: unknown) {
+  if (error instanceof FirebaseAdminConfigError) {
+    return true
+  }
+
+  if (!(error instanceof Error)) {
+    return false
+  }
+
+  return /Firebase Admin|service account|private key|credential/i.test(
+    error.message
+  )
+}
+
 function normalizeServiceAccount(account: ServiceAccountInput) {
   const projectId = account.projectId || account.project_id
   const clientEmail = account.clientEmail || account.client_email
@@ -27,7 +48,7 @@ function normalizeServiceAccount(account: ServiceAccountInput) {
   )
 
   if (!projectId || !clientEmail || !privateKey.trim()) {
-    throw new Error(
+    throw new FirebaseAdminConfigError(
       "Firebase Admin service account is missing project ID, client email, or private key."
     )
   }
@@ -44,7 +65,7 @@ function parseServiceAccount(rawValue: string, source: string) {
   try {
     return normalizeServiceAccount(JSON.parse(rawValue) as ServiceAccountInput)
   } catch (error) {
-    throw new Error(
+    throw new FirebaseAdminConfigError(
       `Firebase Admin service account from ${source} is not valid JSON.`,
       { cause: error }
     )
@@ -90,7 +111,7 @@ function loadServiceAccountFromFile() {
     path.join(process.cwd(), "firebase-adminsdk.json")
 
   if (!fs.existsSync(serviceAccountPath)) {
-    throw new Error(
+    throw new FirebaseAdminConfigError(
       `Firebase Admin service account not found at ${serviceAccountPath}.`
     )
   }
@@ -112,11 +133,27 @@ function getAdminApp() {
     return adminApp
   }
 
-  adminApp =
-    getApps()[0] ||
-    initializeApp({
+  const existingApp = getApps()[0]
+
+  if (existingApp) {
+    adminApp = existingApp
+    return adminApp
+  }
+
+  try {
+    adminApp = initializeApp({
       credential: cert(loadServiceAccount()),
     })
+  } catch (error) {
+    if (isFirebaseAdminConfigError(error)) {
+      throw error
+    }
+
+    throw new FirebaseAdminConfigError(
+      "Firebase Admin failed to initialize. Check FIREBASE_* variables on the deployment server.",
+      { cause: error instanceof Error ? error : undefined }
+    )
+  }
 
   return adminApp
 }

@@ -27,13 +27,15 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const showVercelAnalytics = process.env.VERCEL === "1"
+
   return (
     <html lang="id">
       <body className={`${inter.variable} font-sans antialiased`}>
         <div className="app-shell">
         <AuthProvider>{children}</AuthProvider>
         </div>
-        <Analytics />
+        {showVercelAnalytics ? <Analytics /> : null}
       </body>
     </html>
   )

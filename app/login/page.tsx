@@ -87,6 +87,8 @@ export default function LoginPage() {
 
       if (error.code === "auth/popup-closed-by-user") {
         setError("Login Google dibatalkan")
+      } else if (error.code === "auth/unauthorized-domain") {
+        setError("Login Google belum aktif untuk domain ini. Tambahkan domain deploy ini di Firebase Authentication > Settings > Authorized domains.")
       } else if (error.code === "auth/account-exists-with-different-credential") {
         setError("Email ini sudah terdaftar dengan metode login lain")
       } else if (error.code === "auth/popup-blocked") {

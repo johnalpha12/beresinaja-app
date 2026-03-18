@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAdminDb } from "@/lib/firebase-admin"
+import { getAdminDb, isFirebaseAdminConfigError } from "@/lib/firebase-admin"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -32,7 +32,11 @@ export async function GET(_request: Request, context: RouteContext) {
     console.error("Content API error:", error)
 
     return NextResponse.json(
-      { error: "Gagal memuat dokumen content." },
+      {
+        error: isFirebaseAdminConfigError(error)
+          ? "Firebase Admin belum dikonfigurasi di server deploy."
+          : "Gagal memuat dokumen content.",
+      },
       { status: 500 }
     )
   }

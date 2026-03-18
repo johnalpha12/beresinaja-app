@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin"
+import {
+  getAdminAuth,
+  getAdminDb,
+  isFirebaseAdminConfigError,
+} from "@/lib/firebase-admin"
 import type { UserData, UserRole } from "@/types/user"
 
 export const runtime = "nodejs"
@@ -162,6 +166,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Profile API auth error:", error)
 
+    if (isFirebaseAdminConfigError(error)) {
+      return NextResponse.json(
+        { error: "Firebase Admin belum dikonfigurasi di server deploy." },
+        { status: 500 }
+      )
+    }
+
     return NextResponse.json(
       { error: "Token autentikasi tidak valid." },
       { status: 401 }
@@ -200,7 +211,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: "Gagal menyimpan profil pengguna.",
+        error: isFirebaseAdminConfigError(error)
+          ? "Firebase Admin belum dikonfigurasi di server deploy."
+          : "Gagal menyimpan profil pengguna.",
         ...(process.env.NODE_ENV === "development" &&
         error instanceof Error
           ? { details: error.message }

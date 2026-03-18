@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { getAdminDb } from "@/lib/firebase-admin"
+import { getAdminDb, isFirebaseAdminConfigError } from "@/lib/firebase-admin"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -117,7 +117,11 @@ export async function GET() {
     console.error("Home API error:", error)
 
     return NextResponse.json(
-      { error: "Gagal memuat data beranda." },
+      {
+        error: isFirebaseAdminConfigError(error)
+          ? "Firebase Admin belum dikonfigurasi di server deploy."
+          : "Gagal memuat data beranda.",
+      },
       { status: 500 }
     )
   }
