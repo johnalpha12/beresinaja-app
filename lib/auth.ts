@@ -207,7 +207,7 @@ async function waitForAuthState(targetUid: string | null) {
   })
 }
 
-async function buildAuthHeaders(user: User, forceRefresh = false) {
+export async function buildAuthHeaders(user: User, forceRefresh = false) {
   const token = await user.getIdToken(forceRefresh)
 
   return {

@@ -18,33 +18,40 @@ import {
 import { PageLoader } from "@/components/ui/PageLoader"
 import { PrimaryButton } from "@/components/ui/PrimaryButton"
 import { OutlineButton } from "@/components/ui/OutlineButton"
+import { useAuth } from "@/context/AuthContext"
+import { buildAuthHeaders } from "@/lib/auth"
 import { screenToPath } from "@/types/navigation"
-import { useUserData } from "@/hooks/useUserData"
+import type {
+  TechnicianDashboardData,
+  TechnicianDashboardOrder,
+} from "@/types/dashboard"
 
-type ServiceOrder = {
-  id: string
-  customerName: string
-  customerAvatar: string
-  serviceType: string
-  deviceName: string
-  issues: string[]
-  location: string
-  distance: string
-  scheduledTime: string
-  estimatedPrice: string
-  status: "pending" | "accepted" | "in-progress" | "completed"
-  priority: "normal" | "urgent"
+const technicianStatMeta = [
+  { icon: Calendar, color: "#0288D1" },
+  { icon: TrendingUp, color: "#10B981" },
+  { icon: Star, color: "#F59E0B" },
+  { icon: Clock, color: "#8B5CF6" },
+] as const
+
+type TechnicianDashboardResponse = {
+  error?: string
+  dashboard?: TechnicianDashboardData
 }
 
 export default function TechnicianHomePage() {
   const router = useRouter()
-  const { userData, loading } = useUserData()
+  const { user, userData, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"pending" | "active" | "history">(
     "pending"
   )
+  const [dashboard, setDashboard] = useState<TechnicianDashboardData | null>(null)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState("")
+  const [actionLoading, setActionLoading] = useState("")
+  const [actionError, setActionError] = useState("")
 
   useEffect(() => {
-    if (loading || !userData?.role) {
+    if (authLoading || !userData?.role) {
       return
     }
 
@@ -55,106 +62,121 @@ export default function TechnicianHomePage() {
 
     if (userData.role === "toko") {
       router.replace("/beranda-toko")
+      return
     }
-  }, [loading, router, userData?.role])
 
-  if (loading || userData?.role !== "teknisi") {
+    if (!user) {
+      return
+    }
+
+    const currentUser = user
+
+    let isMounted = true
+
+    async function loadDashboard() {
+      try {
+        setDashboardLoading(true)
+        setDashboardError("")
+
+        const response = await fetch("/api/dashboard", {
+          cache: "no-store",
+          headers: await buildAuthHeaders(currentUser),
+        })
+
+        const data = (await response.json().catch(() => ({}))) as TechnicianDashboardResponse
+
+        if (
+          !response.ok ||
+          !data.dashboard ||
+          data.dashboard.role !== "teknisi"
+        ) {
+          throw new Error(data.error || "Gagal memuat dashboard teknisi.")
+        }
+
+        if (!isMounted) {
+          return
+        }
+
+        setDashboard(data.dashboard)
+      } catch (error) {
+        console.error("Technician dashboard error:", error)
+
+        if (!isMounted) {
+          return
+        }
+
+        setDashboard(null)
+        setDashboardError("Gagal memuat data beranda teknisi.")
+      } finally {
+        if (isMounted) {
+          setDashboardLoading(false)
+        }
+      }
+    }
+
+    void loadDashboard()
+
+    return () => {
+      isMounted = false
+    }
+  }, [authLoading, router, user, userData?.role])
+
+  if (authLoading || dashboardLoading || userData?.role !== "teknisi") {
     return <PageLoader message="Menyiapkan beranda teknisi..." />
   }
 
-  const technicianData = {
-    name: userData.fullName || "Ahmad Hidayat",
-    photo: "👨🔧",
-    rating: 4.9,
-    completedJobs: 532,
-    todayEarnings: "Rp 850.000",
-    monthlyEarnings: "Rp 12.500.000",
-    availabilityStatus: "online" as const,
+  if (!dashboard) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-6">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {dashboardError || "Data beranda teknisi belum tersedia."}
+        </div>
+      </div>
+    )
   }
 
-  const stats = [
-    { label: "Hari Ini", value: "3", subvalue: "order", icon: Calendar, color: "#0288D1" },
-    { label: "Minggu Ini", value: "18", subvalue: "order", icon: TrendingUp, color: "#10B981" },
-    { label: "Rating", value: "4.9", subvalue: "248 ulasan", icon: Star, color: "#F59E0B" },
-    { label: "Response", value: "99%", subvalue: "< 15 menit", icon: Clock, color: "#8B5CF6" },
-  ]
-
-  const pendingOrders: ServiceOrder[] = [
-    {
-      id: "ORD-20240318-001",
-      customerName: "Siti Nurhaliza",
-      customerAvatar: "👩",
-      serviceType: "Ganti LCD",
-      deviceName: "iPhone 13 Pro",
-      issues: ["LCD pecah", "Touchscreen tidak responsif"],
-      location: "Kebayoran Baru, Jakarta Selatan",
-      distance: "2.3 km",
-      scheduledTime: "Hari ini, 14:00",
-      estimatedPrice: "Rp 1.250.000",
-      status: "pending",
-      priority: "urgent",
-    },
-    {
-      id: "ORD-20240318-002",
-      customerName: "Budi Santoso",
-      customerAvatar: "👨",
-      serviceType: "Service Laptop",
-      deviceName: "ASUS ROG",
-      issues: ["Laptop lemot", "Sering restart"],
-      location: "Senopati, Jakarta Selatan",
-      distance: "3.8 km",
-      scheduledTime: "Hari ini, 16:00",
-      estimatedPrice: "Rp 350.000",
-      status: "pending",
-      priority: "normal",
-    },
-    {
-      id: "ORD-20240318-003",
-      customerName: "Diana Putri",
-      customerAvatar: "👩💼",
-      serviceType: "Ganti Baterai",
-      deviceName: "Samsung Galaxy S22",
-      issues: ["Baterai kembung", "Cepat panas"],
-      location: "Kemang, Jakarta Selatan",
-      distance: "1.5 km",
-      scheduledTime: "Besok, 10:00",
-      estimatedPrice: "Rp 450.000",
-      status: "pending",
-      priority: "normal",
-    },
-  ]
-
-  const activeOrders: ServiceOrder[] = [
-    {
-      id: "ORD-20240318-004",
-      customerName: "Eko Prasetyo",
-      customerAvatar: "👨💼",
-      serviceType: "Install Ulang Windows",
-      deviceName: "Lenovo ThinkPad",
-      issues: ["Windows error", "Blue screen"],
-      location: "Blok M, Jakarta Selatan",
-      distance: "1.2 km",
-      scheduledTime: "Sedang berlangsung",
-      estimatedPrice: "Rp 250.000",
-      status: "in-progress",
-      priority: "normal",
-    },
-  ]
-
-  const handleAcceptOrder = (orderId: string) => {
-    console.log("Accept order:", orderId)
-  }
-
-  const handleRejectOrder = (orderId: string) => {
-    console.log("Reject order:", orderId)
-  }
-
+  const technicianData = dashboard.summary
+  const stats = dashboard.stats
   const orders =
     activeTab === "pending"
-      ? pendingOrders
+      ? dashboard.orders.pending
       : activeTab === "active"
-        ? activeOrders
-        : []
+        ? dashboard.orders.active
+        : dashboard.orders.history
+
+  const mutateTechnicianDashboard = async (
+    payload:
+      | { action: "technician.acceptOrder"; orderId: string }
+      | { action: "technician.rejectOrder"; orderId: string }
+  ) => {
+    if (!user) {
+      return
+    }
+
+    try {
+      setActionLoading(`${payload.action}:${payload.orderId}`)
+      setActionError("")
+
+      const response = await fetch("/api/dashboard", {
+        method: "POST",
+        headers: await buildAuthHeaders(user),
+        body: JSON.stringify(payload),
+      })
+
+      const data = (await response.json().catch(() => ({}))) as TechnicianDashboardResponse
+
+      if (!response.ok || !data.dashboard || data.dashboard.role !== "teknisi") {
+        throw new Error(data.error || "Gagal memperbarui dashboard teknisi.")
+      }
+
+      setDashboard(data.dashboard)
+    } catch (error) {
+      console.error("Technician dashboard mutation error:", error)
+      setActionError("Perubahan belum tersimpan ke Firebase. Coba lagi.")
+    } finally {
+      setActionLoading("")
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -178,7 +200,7 @@ export default function TechnicianHomePage() {
         </div>
 
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-4xl shadow-lg">
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center text-2xl shadow-lg">
             {technicianData.photo}
           </div>
           <div className="flex-1 text-white">
@@ -224,15 +246,16 @@ export default function TechnicianHomePage() {
 
       <div className="px-6 -mt-4 mb-6">
         <div className="grid grid-cols-4 gap-3">
-          {stats.map((stat) => {
-            const Icon = stat.icon
+          {stats.map((stat, index) => {
+            const meta = technicianStatMeta[index] || technicianStatMeta[0]
+            const Icon = meta.icon
 
             return (
               <div
                 key={stat.label}
                 className="bg-white rounded-xl p-3 shadow-md border border-[#E5E7EB]"
               >
-                <Icon className="w-5 h-5 mb-2 mx-auto" style={{ color: stat.color }} />
+                <Icon className="w-5 h-5 mb-2 mx-auto" style={{ color: meta.color }} />
                 <div className="text-center">
                   <div className="text-lg text-[#4A4A4A] mb-0.5">{stat.value}</div>
                   <div className="text-xs text-[#6B6B6B]">{stat.label}</div>
@@ -254,7 +277,7 @@ export default function TechnicianHomePage() {
                 : "text-[#6B6B6B] hover:bg-[#F8FAFC]"
             }`}
           >
-            Order Baru ({pendingOrders.length})
+            Order Baru ({dashboard.orders.pending.length})
           </button>
           <button
             onClick={() => setActiveTab("active")}
@@ -264,7 +287,7 @@ export default function TechnicianHomePage() {
                 : "text-[#6B6B6B] hover:bg-[#F8FAFC]"
             }`}
           >
-            Sedang Aktif ({activeOrders.length})
+            Sedang Aktif ({dashboard.orders.active.length})
           </button>
           <button
             onClick={() => setActiveTab("history")}
@@ -278,6 +301,14 @@ export default function TechnicianHomePage() {
           </button>
         </div>
       </div>
+
+      {actionError && (
+        <div className="px-6 mb-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        </div>
+      )}
 
       <div className="flex-1 overflow-y-auto px-6 pb-6">
         {orders.length === 0 ? (
@@ -294,14 +325,14 @@ export default function TechnicianHomePage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {orders.map((order) => (
+            {orders.map((order: TechnicianDashboardOrder) => (
               <div
                 key={order.id}
                 className="bg-white rounded-2xl p-5 border border-[#E5E7EB] shadow-sm"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] flex items-center justify-center text-2xl">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] flex items-center justify-center text-lg text-white">
                       {order.customerAvatar}
                     </div>
                     <div>
@@ -363,14 +394,34 @@ export default function TechnicianHomePage() {
                 {order.status === "pending" ? (
                   <div className="flex gap-3">
                     <OutlineButton
-                      label="Tolak"
-                      onClick={() => handleRejectOrder(order.id)}
+                      label={
+                        actionLoading === `technician.rejectOrder:${order.id}`
+                          ? "Menyimpan..."
+                          : "Tolak"
+                      }
+                      onClick={() =>
+                        void mutateTechnicianDashboard({
+                          action: "technician.rejectOrder",
+                          orderId: order.id,
+                        })
+                      }
+                      disabled={actionLoading !== "" && actionLoading.includes(order.id)}
                       className="flex-1"
                     />
                     <div className="flex-[2]">
                       <PrimaryButton
-                        label="Terima Order"
-                        onClick={() => handleAcceptOrder(order.id)}
+                        label={
+                          actionLoading === `technician.acceptOrder:${order.id}`
+                            ? "Menyimpan..."
+                            : "Terima Order"
+                        }
+                        onClick={() =>
+                          void mutateTechnicianDashboard({
+                            action: "technician.acceptOrder",
+                            orderId: order.id,
+                          })
+                        }
+                        disabled={actionLoading !== "" && actionLoading.includes(order.id)}
                       />
                     </div>
                   </div>

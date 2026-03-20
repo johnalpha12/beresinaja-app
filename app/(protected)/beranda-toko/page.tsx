@@ -20,39 +20,39 @@ import {
 import { PageLoader } from "@/components/ui/PageLoader"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { PrimaryButton } from "@/components/ui/PrimaryButton"
+import { useAuth } from "@/context/AuthContext"
+import { buildAuthHeaders } from "@/lib/auth"
 import { screenToPath } from "@/types/navigation"
-import { useUserData } from "@/hooks/useUserData"
+import type {
+  StoreDashboardData,
+  StoreDashboardOrder,
+  StoreDashboardProduct,
+} from "@/types/dashboard"
 
-type Product = {
-  id: string
-  name: string
-  image: string
-  price: string
-  stock: number
-  sold: number
-  views: number
-  rating: number
-  status: "active" | "low-stock" | "out-of-stock"
-}
+const storeStatMeta = [
+  { icon: ShoppingCart, color: "#0288D1" },
+  { icon: DollarSign, color: "#10B981" },
+  { icon: Package, color: "#8B5CF6" },
+  { icon: Star, color: "#F59E0B" },
+] as const
 
-type Order = {
-  id: string
-  customerName: string
-  customerAvatar: string
-  productName: string
-  quantity: number
-  totalPrice: string
-  status: "pending" | "processing" | "shipped" | "completed"
-  orderDate: string
+type StoreDashboardResponse = {
+  error?: string
+  dashboard?: StoreDashboardData
 }
 
 export default function StoreHomePage() {
   const router = useRouter()
-  const { userData, loading } = useUserData()
+  const { user, userData, loading: authLoading } = useAuth()
   const [activeTab, setActiveTab] = useState<"products" | "orders">("orders")
+  const [dashboard, setDashboard] = useState<StoreDashboardData | null>(null)
+  const [dashboardLoading, setDashboardLoading] = useState(false)
+  const [dashboardError, setDashboardError] = useState("")
+  const [actionLoading, setActionLoading] = useState("")
+  const [actionError, setActionError] = useState("")
 
   useEffect(() => {
-    if (loading || !userData?.role) {
+    if (authLoading || !userData?.role) {
       return
     }
 
@@ -63,111 +63,85 @@ export default function StoreHomePage() {
 
     if (userData.role === "teknisi") {
       router.replace("/beranda-teknisi")
+      return
     }
-  }, [loading, router, userData?.role])
 
-  if (loading || userData?.role !== "toko") {
+    if (!user) {
+      return
+    }
+
+    const currentUser = user
+
+    let isMounted = true
+
+    async function loadDashboard() {
+      try {
+        setDashboardLoading(true)
+        setDashboardError("")
+
+        const response = await fetch("/api/dashboard", {
+          cache: "no-store",
+          headers: await buildAuthHeaders(currentUser),
+        })
+
+        const data = (await response.json().catch(() => ({}))) as StoreDashboardResponse
+
+        if (
+          !response.ok ||
+          !data.dashboard ||
+          data.dashboard.role !== "toko"
+        ) {
+          throw new Error(data.error || "Gagal memuat dashboard toko.")
+        }
+
+        if (!isMounted) {
+          return
+        }
+
+        setDashboard(data.dashboard)
+      } catch (error) {
+        console.error("Store dashboard error:", error)
+
+        if (!isMounted) {
+          return
+        }
+
+        setDashboard(null)
+        setDashboardError("Gagal memuat data beranda toko.")
+      } finally {
+        if (isMounted) {
+          setDashboardLoading(false)
+        }
+      }
+    }
+
+    void loadDashboard()
+
+    return () => {
+      isMounted = false
+    }
+  }, [authLoading, router, user, userData?.role])
+
+  if (authLoading || dashboardLoading || userData?.role !== "toko") {
     return <PageLoader message="Menyiapkan beranda toko..." />
   }
 
-  const storeData = {
-    name: userData.fullName || "TechStore Official",
-    logo: "🏪",
-    rating: 4.8,
-    totalProducts: 156,
-    todaySales: "Rp 15.750.000",
-    monthlySales: "Rp 248.500.000",
-    storeStatus: "open" as const,
+  if (!dashboard) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center px-6">
+        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+          {dashboardError || "Data beranda toko belum tersedia."}
+        </div>
+      </div>
+    )
   }
 
-  const stats = [
-    { label: "Hari Ini", value: "24", subvalue: "pesanan", icon: ShoppingCart, color: "#0288D1" },
-    { label: "Penjualan", value: "15.7jt", subvalue: "hari ini", icon: DollarSign, color: "#10B981" },
-    { label: "Produk", value: "156", subvalue: "aktif", icon: Package, color: "#8B5CF6" },
-    { label: "Rating", value: "4.8", subvalue: "1.2k ulasan", icon: Star, color: "#F59E0B" },
-  ]
+  const storeData = dashboard.summary
+  const stats = dashboard.stats
+  const pendingOrders = dashboard.pendingOrders
+  const topProducts = dashboard.topProducts
 
-  const pendingOrders: Order[] = [
-    {
-      id: "ORD-20240318-101",
-      customerName: "Siti Nurhaliza",
-      customerAvatar: "👩",
-      productName: "iPhone 13 Pro 256GB",
-      quantity: 1,
-      totalPrice: "Rp 13.500.000",
-      status: "pending",
-      orderDate: "18 Mar 2024, 10:30",
-    },
-    {
-      id: "ORD-20240318-102",
-      customerName: "Budi Santoso",
-      customerAvatar: "👨",
-      productName: "AirPods Pro 2nd Gen",
-      quantity: 2,
-      totalPrice: "Rp 7.998.000",
-      status: "pending",
-      orderDate: "18 Mar 2024, 11:15",
-    },
-    {
-      id: "ORD-20240318-103",
-      customerName: "Diana Putri",
-      customerAvatar: "👩💼",
-      productName: "Samsung Galaxy S24 Ultra",
-      quantity: 1,
-      totalPrice: "Rp 18.999.000",
-      status: "processing",
-      orderDate: "18 Mar 2024, 09:45",
-    },
-  ]
-
-  const topProducts: Product[] = [
-    {
-      id: "PROD-001",
-      name: "iPhone 13 Pro 256GB",
-      image: "📱",
-      price: "Rp 13.500.000",
-      stock: 12,
-      sold: 45,
-      views: 1250,
-      rating: 4.9,
-      status: "active",
-    },
-    {
-      id: "PROD-002",
-      name: "Samsung Galaxy S24 Ultra",
-      image: "📱",
-      price: "Rp 18.999.000",
-      stock: 3,
-      sold: 28,
-      views: 980,
-      rating: 4.8,
-      status: "low-stock",
-    },
-    {
-      id: "PROD-003",
-      name: "MacBook Pro M3 14 inch",
-      image: "💻",
-      price: "Rp 29.999.000",
-      stock: 0,
-      sold: 15,
-      views: 756,
-      rating: 5,
-      status: "out-of-stock",
-    },
-    {
-      id: "PROD-004",
-      name: "AirPods Pro 2nd Gen",
-      image: "🎧",
-      price: "Rp 3.999.000",
-      stock: 24,
-      sold: 89,
-      views: 2340,
-      rating: 4.9,
-      status: "active",
-    },
-  ]
-
-  const getOrderStatusType = (status: Order["status"]) => {
+  const getOrderStatusType = (status: StoreDashboardOrder["status"]) => {
     switch (status) {
       case "completed":
         return "completed" as const
@@ -180,7 +154,7 @@ export default function StoreHomePage() {
     }
   }
 
-  const getOrderStatusText = (status: Order["status"]) => {
+  const getOrderStatusText = (status: StoreDashboardOrder["status"]) => {
     switch (status) {
       case "completed":
         return "Selesai"
@@ -194,7 +168,7 @@ export default function StoreHomePage() {
     }
   }
 
-  const getProductStatusType = (status: Product["status"]) => {
+  const getProductStatusType = (status: StoreDashboardProduct["status"]) => {
     switch (status) {
       case "active":
         return "completed" as const
@@ -205,7 +179,7 @@ export default function StoreHomePage() {
     }
   }
 
-  const getProductStatusText = (status: Product["status"]) => {
+  const getProductStatusText = (status: StoreDashboardProduct["status"]) => {
     switch (status) {
       case "active":
         return "Aktif"
@@ -214,6 +188,40 @@ export default function StoreHomePage() {
       case "out-of-stock":
       default:
         return "Stok Habis"
+    }
+  }
+
+  const mutateStoreDashboard = async (
+    payload:
+      | { action: "store.addProduct" }
+      | { action: "store.processOrder"; orderId: string }
+  ) => {
+    if (!user) {
+      return
+    }
+
+    try {
+      setActionLoading(payload.action === "store.addProduct" ? "add-product" : payload.orderId)
+      setActionError("")
+
+      const response = await fetch("/api/dashboard", {
+        method: "POST",
+        headers: await buildAuthHeaders(user),
+        body: JSON.stringify(payload),
+      })
+
+      const data = (await response.json().catch(() => ({}))) as StoreDashboardResponse
+
+      if (!response.ok || !data.dashboard || data.dashboard.role !== "toko") {
+        throw new Error(data.error || "Gagal memperbarui dashboard toko.")
+      }
+
+      setDashboard(data.dashboard)
+    } catch (error) {
+      console.error("Store dashboard mutation error:", error)
+      setActionError("Perubahan belum tersimpan ke Firebase. Coba lagi.")
+    } finally {
+      setActionLoading("")
     }
   }
 
@@ -283,15 +291,16 @@ export default function StoreHomePage() {
 
       <div className="px-6 -mt-4 mb-6">
         <div className="grid grid-cols-4 gap-3">
-          {stats.map((stat) => {
-            const Icon = stat.icon
+          {stats.map((stat, index) => {
+            const meta = storeStatMeta[index] || storeStatMeta[0]
+            const Icon = meta.icon
 
             return (
               <div
                 key={stat.label}
                 className="bg-white rounded-xl p-3 shadow-md border border-[#E5E7EB]"
               >
-                <Icon className="w-5 h-5 mb-2 mx-auto" style={{ color: stat.color }} />
+                <Icon className="w-5 h-5 mb-2 mx-auto" style={{ color: meta.color }} />
                 <div className="text-center">
                   <div className="text-lg text-[#4A4A4A] mb-0.5">{stat.value}</div>
                   <div className="text-xs text-[#6B6B6B]">{stat.label}</div>
@@ -305,9 +314,15 @@ export default function StoreHomePage() {
 
       <div className="px-6 mb-6">
         <div className="grid grid-cols-2 gap-3">
-          <button className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] text-white rounded-2xl p-4 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-shadow">
+          <button
+            onClick={() => void mutateStoreDashboard({ action: "store.addProduct" })}
+            disabled={actionLoading !== ""}
+            className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] text-white rounded-2xl p-4 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-shadow disabled:opacity-60"
+          >
             <Plus className="w-5 h-5" />
-            <span className="text-sm">Tambah Produk</span>
+            <span className="text-sm">
+              {actionLoading === "add-product" ? "Menyimpan..." : "Tambah Produk"}
+            </span>
           </button>
           <button className="bg-white text-[#0288D1] border-2 border-[#0288D1] rounded-2xl p-4 flex items-center justify-center gap-2 hover:bg-[#0288D1]/5 transition-colors">
             <BarChart3 className="w-5 h-5" />
@@ -315,6 +330,14 @@ export default function StoreHomePage() {
           </button>
         </div>
       </div>
+
+      {actionError && (
+        <div className="px-6 mb-4">
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        </div>
+      )}
 
       <div className="px-6 mb-4">
         <div className="bg-white rounded-full p-1 flex border border-[#E5E7EB]">
@@ -351,7 +374,7 @@ export default function StoreHomePage() {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] flex items-center justify-center text-2xl">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] flex items-center justify-center text-lg text-white">
                       {order.customerAvatar}
                     </div>
                     <div>
@@ -379,7 +402,16 @@ export default function StoreHomePage() {
 
                 {order.status === "pending" && (
                   <div className="flex gap-3">
-                    <PrimaryButton label="Proses Pesanan" onClick={() => {}} />
+                    <PrimaryButton
+                      label={actionLoading === order.id ? "Menyimpan..." : "Proses Pesanan"}
+                      onClick={() =>
+                        void mutateStoreDashboard({
+                          action: "store.processOrder",
+                          orderId: order.id,
+                        })
+                      }
+                      disabled={actionLoading !== "" && actionLoading !== order.id}
+                    />
                   </div>
                 )}
 
@@ -400,7 +432,7 @@ export default function StoreHomePage() {
                 className="bg-white rounded-2xl p-5 border border-[#E5E7EB] shadow-sm hover:border-[#0288D1] hover:shadow-md transition-all"
               >
                 <div className="flex gap-4">
-                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-[#0288D1]/10 to-[#4FC3F7]/10 flex items-center justify-center text-4xl flex-shrink-0">
+                  <div className="w-20 h-20 rounded-xl bg-gradient-to-br from-[#0288D1]/10 to-[#4FC3F7]/10 flex items-center justify-center text-xl text-[#0288D1] flex-shrink-0">
                     {product.image}
                   </div>
 

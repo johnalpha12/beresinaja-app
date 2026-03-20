@@ -1018,14 +1018,39 @@ const seed = {
       },
       tracking: {
         orderId: "BA-2510-8374",
-        statusBadge: "Dikerjakan",
-        statusLabel: "Dikerjakan",
+        statusBadge: "Menunggu Konfirmasi",
+        statusLabel: "Menunggu Konfirmasi Biaya",
         deviceName: "iPhone 13 Pro",
         deviceIssue: "Ganti LCD - Layar pecah",
         eta: "2 jam lagi",
         pickupType: "Jemput-Antar",
         technicianRating: "Rating 4.9",
         technicianCompleted: "567 servis berhasil",
+        serviceCostConfirmation: {
+          status: "pending",
+          title: "Konfirmasi estimasi biaya",
+          note: "Teknisi sudah selesai diagnosa awal. Mohon setujui estimasi biaya berikut agar pengerjaan bisa dilanjutkan.",
+          lineItems: [
+            {
+              label: "LCD Original",
+              amount: 750000,
+            },
+            {
+              label: "Jasa pemasangan",
+              amount: 100000,
+            },
+            {
+              label: "Biaya jemput-antar",
+              amount: 25000,
+            },
+          ],
+          subtotal: 875000,
+          discount: 25000,
+          total: 850000,
+          approvedAt: null,
+          rejectedAt: null,
+          rejectionReason: null,
+        },
         steps: [
           {
             step: 1,
@@ -1045,7 +1070,7 @@ const seed = {
             step: 3,
             label: "Menunggu Konfirmasi Biaya",
             date: null,
-            desc: "Estimasi: Rp 850.000 - LCD Original",
+            desc: "Total estimasi Rp 850.000 menunggu persetujuan pelanggan",
             status: "active",
           },
           {
@@ -1068,6 +1093,191 @@ const seed = {
   },
 };
 
+function getInitials(name, fallback) {
+  const initials = String(name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+
+  return initials || fallback;
+}
+
+function createStoreDashboardSeed(displayName) {
+  const name = String(displayName || "").trim() || "Toko Mitra";
+
+  return {
+    role: "toko",
+    summary: {
+      name,
+      logo: getInitials(name, "TM"),
+      rating: 4.8,
+      totalProducts: 4,
+      todaySales: "Rp 15.750.000",
+      monthlySales: "Rp 248.500.000",
+      storeStatus: "open",
+    },
+    stats: [
+      { label: "Hari Ini", value: "24", subvalue: "pesanan" },
+      { label: "Penjualan", value: "15.7jt", subvalue: "hari ini" },
+      { label: "Produk", value: "4", subvalue: "aktif" },
+      { label: "Rating", value: "4.8", subvalue: "120 ulasan" },
+    ],
+    pendingOrders: [
+      {
+        id: "ORD-20240318-101",
+        customerName: "Siti Nurhaliza",
+        customerAvatar: "SN",
+        productName: "iPhone 13 Pro 256GB",
+        quantity: 1,
+        totalPrice: "Rp 13.500.000",
+        status: "pending",
+        orderDate: "18 Mar 2024, 10:30",
+      },
+      {
+        id: "ORD-20240318-102",
+        customerName: "Budi Santoso",
+        customerAvatar: "BS",
+        productName: "AirPods Pro 2nd Gen",
+        quantity: 2,
+        totalPrice: "Rp 7.998.000",
+        status: "pending",
+        orderDate: "18 Mar 2024, 11:15",
+      },
+      {
+        id: "ORD-20240318-103",
+        customerName: "Diana Putri",
+        customerAvatar: "DP",
+        productName: "Samsung Galaxy S24 Ultra",
+        quantity: 1,
+        totalPrice: "Rp 18.999.000",
+        status: "processing",
+        orderDate: "18 Mar 2024, 09:45",
+      },
+    ],
+    topProducts: [
+      {
+        id: "PROD-001",
+        name: "iPhone 13 Pro 256GB",
+        image: "HP",
+        price: "Rp 13.500.000",
+        stock: 12,
+        sold: 45,
+        views: 1250,
+        rating: 4.9,
+        status: "active",
+      },
+      {
+        id: "PROD-002",
+        name: "Samsung Galaxy S24 Ultra",
+        image: "HP",
+        price: "Rp 18.999.000",
+        stock: 3,
+        sold: 28,
+        views: 980,
+        rating: 4.8,
+        status: "low-stock",
+      },
+      {
+        id: "PROD-003",
+        name: "MacBook Pro M3 14 inch",
+        image: "LT",
+        price: "Rp 29.999.000",
+        stock: 0,
+        sold: 15,
+        views: 756,
+        rating: 5,
+        status: "out-of-stock",
+      },
+      {
+        id: "PROD-004",
+        name: "AirPods Pro 2nd Gen",
+        image: "AK",
+        price: "Rp 3.999.000",
+        stock: 24,
+        sold: 89,
+        views: 2340,
+        rating: 4.9,
+        status: "active",
+      },
+    ],
+  };
+}
+
+function createTechnicianDashboardSeed(displayName) {
+  const name = String(displayName || "").trim() || "Teknisi Mitra";
+
+  return {
+    role: "teknisi",
+    summary: {
+      name,
+      photo: getInitials(name, "TM"),
+      rating: 4.9,
+      completedJobs: 532,
+      todayEarnings: "Rp 850.000",
+      monthlyEarnings: "Rp 12.500.000",
+      availabilityStatus: "online",
+    },
+    stats: [
+      { label: "Hari Ini", value: "3", subvalue: "order" },
+      { label: "Minggu Ini", value: "18", subvalue: "order" },
+      { label: "Rating", value: "4.9", subvalue: "248 ulasan" },
+      { label: "Response", value: "99%", subvalue: "< 15 menit" },
+    ],
+    orders: {
+      pending: [
+        {
+          id: "ORD-20240318-001",
+          customerName: "Siti Nurhaliza",
+          customerAvatar: "SN",
+          serviceType: "Ganti LCD",
+          deviceName: "iPhone 13 Pro",
+          issues: ["LCD pecah", "Touchscreen tidak responsif"],
+          location: "Kebayoran Baru, Jakarta Selatan",
+          distance: "2.3 km",
+          scheduledTime: "Hari ini, 14:00",
+          estimatedPrice: "Rp 1.250.000",
+          status: "pending",
+          priority: "urgent",
+        },
+        {
+          id: "ORD-20240318-002",
+          customerName: "Budi Santoso",
+          customerAvatar: "BS",
+          serviceType: "Service Laptop",
+          deviceName: "ASUS ROG",
+          issues: ["Laptop lemot", "Sering restart"],
+          location: "Senopati, Jakarta Selatan",
+          distance: "3.8 km",
+          scheduledTime: "Hari ini, 16:00",
+          estimatedPrice: "Rp 350.000",
+          status: "pending",
+          priority: "normal",
+        },
+      ],
+      active: [
+        {
+          id: "ORD-20240318-004",
+          customerName: "Eko Prasetyo",
+          customerAvatar: "EP",
+          serviceType: "Install Ulang Windows",
+          deviceName: "Lenovo ThinkPad",
+          issues: ["Windows error", "Blue screen"],
+          location: "Blok M, Jakarta Selatan",
+          distance: "1.2 km",
+          scheduledTime: "Sedang berlangsung",
+          estimatedPrice: "Rp 250.000",
+          status: "in-progress",
+          priority: "normal",
+        },
+      ],
+      history: [],
+    },
+  };
+}
+
 async function seedCollection(collectionName, docs) {
   const batch = db.batch();
   const colRef = db.collection(collectionName);
@@ -1077,12 +1287,48 @@ async function seedCollection(collectionName, docs) {
   await batch.commit();
 }
 
+async function seedBusinessDashboards() {
+  const userSnapshots = await Promise.all([
+    db.collection("users").where("role", "==", "toko").get(),
+    db.collection("users").where("role", "==", "teknisi").get(),
+  ]);
+
+  for (const snapshot of userSnapshots) {
+    for (const userDoc of snapshot.docs) {
+      const profile = userDoc.data() || {};
+      const displayName =
+        String(profile.fullName || "").trim() ||
+        String(profile.email || "").split("@")[0].trim() ||
+        "Mitra BeresinAja";
+
+      if (profile.role === "toko") {
+        const dashboardRef = db.collection("storeDashboards").doc(userDoc.id);
+        const dashboardSnap = await dashboardRef.get();
+
+        if (!dashboardSnap.exists) {
+          await dashboardRef.set(createStoreDashboardSeed(displayName));
+        }
+      }
+
+      if (profile.role === "teknisi") {
+        const dashboardRef = db.collection("technicianDashboards").doc(userDoc.id);
+        const dashboardSnap = await dashboardRef.get();
+
+        if (!dashboardSnap.exists) {
+          await dashboardRef.set(createTechnicianDashboardSeed(displayName));
+        }
+      }
+    }
+  }
+}
+
 async function run() {
   try {
     await seedCollection("content", seed.content);
     await seedCollection("technicians", seed.technicians);
     await seedCollection("products", seed.products);
     await seedCollection("orders", seed.orders);
+    await seedBusinessDashboards();
     console.log("Firestore seed complete.");
   } catch (error) {
     console.error("Firestore seed failed:", error);
