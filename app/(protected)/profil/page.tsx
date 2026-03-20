@@ -50,6 +50,14 @@ export default function ProfilPage() {
   }
 
   const stats = userData?.stats || { services: 0, transactions: 0, sellItems: 0 }
+  const isBusinessRole =
+    userData?.role === "teknisi" || userData?.role === "toko"
+  const roleLabel =
+    userData?.role === "teknisi"
+      ? "Teknisi"
+      : userData?.role === "toko"
+        ? "Toko"
+        : "Member Premium"
   const premiumBenefits =
     userData?.premium?.benefits || [
       "Gratis jemput-antar unlimited",
@@ -188,7 +196,7 @@ export default function ProfilPage() {
               </p>
             </div>
             <span className="inline-block sm:ml-auto bg-secondary text-primary text-xs font-semibold px-3 py-1.5 rounded-full border border-primary/20 whitespace-nowrap">
-              {userData?.role === "teknisi" ? "Teknisi/Toko" : "Member Premium"}
+              {roleLabel}
             </span>
           </div>
 
@@ -208,7 +216,7 @@ export default function ProfilPage() {
           </div>
         </div>
 
-        {userData?.role !== "teknisi" && (
+        {!isBusinessRole && (
           <div className="mx-4 sm:mx-6 lg:mx-10 bg-secondary border border-primary/20 rounded-2xl p-4 sm:p-5">
             <div className="flex items-center gap-2 mb-2">
               <Crown className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
@@ -307,10 +315,10 @@ export default function ProfilPage() {
           </button>
         </div>
 
-        {userData?.role === "teknisi" && (
+        {isBusinessRole && (
           <div className="mx-4 sm:mx-6 lg:mx-10 text-center">
             <p className="text-xs text-muted-foreground">
-              Anda terdaftar sebagai Teknisi/Toko
+              Anda terdaftar sebagai {roleLabel}
             </p>
           </div>
         )}

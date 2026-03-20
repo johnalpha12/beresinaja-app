@@ -132,6 +132,18 @@ function normalizePremium(value: Partial<UserData>["premium"]) {
   }
 }
 
+function resolveProfileRole(existingRole?: UserRole, requestedRole?: UserRole) {
+  if (existingRole === "toko" || existingRole === "teknisi") {
+    return existingRole
+  }
+
+  if (requestedRole === "toko" || requestedRole === "teknisi") {
+    return requestedRole
+  }
+
+  return existingRole ?? requestedRole ?? "pengguna"
+}
+
 function toFirestoreProfile(
   profile: UserData & {
     city?: string
@@ -196,7 +208,7 @@ export async function POST(request: NextRequest) {
         formatFallbackName(authenticatedUser.email),
       email: body.email ?? existing.email ?? authenticatedUser.email ?? "",
       phone: body.phone ?? existing.phone ?? "",
-      role: body.role ?? existing.role ?? "pengguna",
+      role: resolveProfileRole(existing.role, body.role),
       createdAt: normalizeCreatedAt(existing.createdAt),
       city: typeof existing.city === "string" ? existing.city : undefined,
       stats: normalizeStats(existing.stats ?? defaultStats),

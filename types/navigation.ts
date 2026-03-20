@@ -1,3 +1,5 @@
+import type { UserRole } from "@/types/user"
+
 export type Screen =
   | "splash"
   | "login"
@@ -67,6 +69,18 @@ export function normalizeScreen(screen: ScreenLike): Screen {
 
 export function screenToPath(screen: ScreenLike) {
   return SCREEN_PATHS[normalizeScreen(screen)]
+}
+
+export function homePathByRole(role?: UserRole) {
+  if (role === "teknisi") {
+    return "/beranda-teknisi"
+  }
+
+  if (role === "toko") {
+    return "/beranda-toko"
+  }
+
+  return SCREEN_PATHS.home
 }
 
 export function technicianDetailPath(technicianId: string) {

@@ -20,7 +20,6 @@ export default function RegisterPage() {
     phone: "",
     password: ""
   })
-  const [role, setRole] = useState<"pengguna" | "teknisi">("pengguna") 
   const [agreeTerms, setAgreeTerms] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,8 +33,18 @@ export default function RegisterPage() {
     e.preventDefault()
     setError("")
 
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
+    const fullName = formData.fullName.trim()
+    const email = formData.email.trim().toLowerCase()
+    const phone = formData.phone.trim()
+    const password = formData.password
+
+    if (!fullName || !email || !phone || !password) {
       setError("Semua field harus diisi")
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError("Format email tidak valid")
       return
     }
 
@@ -44,7 +53,7 @@ export default function RegisterPage() {
       return
     }
 
-    if (formData.password.length < 8) {
+    if (password.length < 8) {
       setError("Password minimal 8 karakter")
       return
     }
@@ -53,13 +62,13 @@ export default function RegisterPage() {
 
     try {
       await registerUser(
-        formData.email,
-        formData.password,
-        formData.fullName,
-        formData.phone,
-        role
+        email,
+        password,
+        fullName,
+        phone,
+        "pengguna"
       )
-      navigate("home")
+      router.replace(screenToPath("login"))
     } catch (error: any) {
       console.error("Registration error:", error)
       if (error.code === 'auth/email-already-in-use') {
@@ -190,47 +199,6 @@ export default function RegisterPage() {
               </button> 
             </div> 
             <p className="text-xs text-muted-foreground mt-1">Minimal 8 karakter dengan huruf dan angka</p> 
-          </div> 
-
-          {/* Role selector */}
-          <div className="flex flex-col gap-2 sm:gap-3"> 
-            <p className="text-xs sm:text-sm font-medium text-foreground">Daftar sebagai:</p> 
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3"> 
-              <button 
-                type="button"
-                onClick={() => setRole("pengguna")} 
-                disabled={isLoading}
-                className={`flex-1 rounded-xl sm:rounded-2xl border-2 px-3 sm:px-4 py-2.5 sm:py-3 text-left transition-all ${
-                  role === "pengguna" 
-                    ? "border-primary bg-secondary" 
-                    : "border-border bg-background hover:bg-accent/50"
-                } disabled:opacity-50`}
-              > 
-                <p className={`text-sm sm:text-base font-semibold ${
-                  role === "pengguna" ? "text-primary" : "text-foreground"
-                }`}> 
-                  Pengguna 
-                </p> 
-                <p className="text-xs sm:text-sm text-muted-foreground">Butuh servis</p> 
-              </button> 
-              <button 
-                type="button"
-                onClick={() => setRole("teknisi")} 
-                disabled={isLoading}
-                className={`flex-1 rounded-xl sm:rounded-2xl border-2 px-3 sm:px-4 py-2.5 sm:py-3 text-left transition-all ${
-                  role === "teknisi" 
-                    ? "border-primary bg-secondary" 
-                    : "border-border bg-background hover:bg-accent/50"
-                } disabled:opacity-50`}
-              > 
-                <p className={`text-sm sm:text-base font-semibold ${
-                  role === "teknisi" ? "text-primary" : "text-foreground"
-                }`}> 
-                  Teknisi/Toko 
-                </p> 
-                <p className="text-xs sm:text-sm text-muted-foreground">Layanan servis</p> 
-              </button> 
-            </div> 
           </div> 
 
           {/* Terms and conditions */}

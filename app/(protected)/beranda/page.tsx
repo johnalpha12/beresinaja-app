@@ -57,13 +57,29 @@ const iconMap: Record<string, ComponentType<{ className?: string }>> = {
 export default function BerandaPage() {
   const router = useRouter()
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
-  const { userData } = useUserData()
+  const { userData, loading: authLoading } = useUserData()
   const [services, setServices] = useState<ServiceItem[]>([])
   const [recommendedTechnicians, setRecommendedTechnicians] = useState<Technician[]>([])
   const [promo, setPromo] = useState<Promo | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (!authLoading && userData?.role === "teknisi") {
+      router.replace("/beranda-teknisi")
+      return
+    }
+
+    if (!authLoading && userData?.role === "toko") {
+      router.replace("/beranda-toko")
+      return
+    }
+
+    if (authLoading || userData?.role !== "pengguna") {
+      return
+    }
+
+    let isMounted = true
+
     async function loadContent() {
       try {
         setLoading(true)
@@ -81,23 +97,35 @@ export default function BerandaPage() {
           promo?: Promo
         }
 
+        if (!isMounted) {
+          return
+        }
+
         setServices(data.services || [])
         setPromo(data.promo || null)
         setRecommendedTechnicians(data.recommendedTechnicians || [])
       } catch (error) {
         console.error("Failed to load home content:", error)
       } finally {
-        setLoading(false)
+        if (isMounted) {
+          setLoading(false)
+        }
       }
     }
 
-    loadContent()
-  }, [])
+    void loadContent()
+
+    return () => {
+      isMounted = false
+    }
+  }, [authLoading, router, userData?.role])
 
   const displayName = userData?.fullName || "Pengguna"
   const displayCity = userData?.city || "Medan"
+  const isBusinessRole =
+    userData?.role === "teknisi" || userData?.role === "toko"
 
-  if (loading) {
+  if (authLoading || loading || isBusinessRole) {
     return <PageLoader message="Memuat beranda..." />
   }
 

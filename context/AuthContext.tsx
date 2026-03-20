@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 import type { User } from "firebase/auth"
 import {
   completeGoogleRedirectLogin,
@@ -23,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userData, setUserData] = useState<UserData | null>(null)
   const [loading, setLoading] = useState(true)
+  const lastUserUidRef = useRef<string | null>(null)
 
   useEffect(() => {
     let isMounted = true
@@ -32,11 +33,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
+      const nextUserUid = nextUser?.uid ?? null
+      const hasChangedUser = lastUserUidRef.current !== nextUserUid
+      lastUserUidRef.current = nextUserUid
+
       setLoading(true)
       setUser(nextUser)
 
-      if (!nextUser) {
+      if (hasChangedUser) {
         setUserData(null)
+      }
+
+      if (!nextUser) {
         setLoading(false)
         return
       }

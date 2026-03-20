@@ -1,4 +1,4 @@
-export type UserRole = "pengguna" | "teknisi"
+export type UserRole = "pengguna" | "teknisi" | "toko"
 
 export type UserStats = {
   services: number

@@ -4,13 +4,13 @@ import { useEffect, useState } from "react"
 import { Eye, EyeOff, Mail } from "lucide-react" 
 import type { Screen } from "@/types/navigation" 
 import Image from "next/image" 
-import { loginUser, loginWithGoogle } from "@/lib/auth"
+import { ensureUserProfile, loginUser, loginWithGoogle } from "@/lib/auth"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation"
-import { screenToPath } from "@/types/navigation"
+import { homePathByRole, screenToPath } from "@/types/navigation"
 
 export default function LoginPage() { 
-  const { user, loading } = useAuth()
+  const { user, userData, loading } = useAuth()
   const router = useRouter()
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
   const [showPassword, setShowPassword] = useState(false)
@@ -22,10 +22,15 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
-    if (!loading && user) {
-      router.replace(screenToPath("home"))
+    if (
+      !loading &&
+      user &&
+      userData?.uid === user.uid &&
+      userData.role
+    ) {
+      router.replace(homePathByRole(userData.role))
     }
-  }, [loading, user, router])
+  }, [loading, router, user, userData?.role, userData?.uid])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -36,6 +41,11 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (isLoading) {
+      return
+    }
+
     setError("")
 
     const email = formData.email.trim().toLowerCase()
@@ -54,17 +64,25 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      await loginUser(email, password)
-      navigate("home")
+      const user = await loginUser(email, password)
+      const profile = await ensureUserProfile(user)
+
+      router.replace(homePathByRole(profile.role))
     } catch (error: any) {
-      console.error("Login error:", error)
-      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+      const errorCode = error?.code as string | undefined
+
+      if (
+        errorCode === "auth/invalid-credential" ||
+        errorCode === "auth/user-not-found" ||
+        errorCode === "auth/wrong-password"
+      ) {
         setError("Email atau password salah")
-      } else if (error.code === 'auth/invalid-email') {
+      } else if (errorCode === "auth/invalid-email") {
         setError("Format email tidak valid")
-      } else if (error.code === 'auth/too-many-requests') {
+      } else if (errorCode === "auth/too-many-requests") {
         setError("Terlalu banyak percobaan. Coba lagi nanti")
       } else {
+        console.error("Login error:", error)
         setError("Gagal masuk. Silakan coba lagi.")
       }
     } finally {
@@ -73,6 +91,10 @@ export default function LoginPage() {
   }
 
   const handleGoogleLogin = async () => {
+    if (isLoading) {
+      return
+    }
+
     setError("")
     setIsLoading(true)
 
@@ -80,7 +102,9 @@ export default function LoginPage() {
       const user = await loginWithGoogle()
 
       if (user) {
-        navigate("home")
+        const profile = await ensureUserProfile(user)
+
+        router.replace(homePathByRole(profile.role))
       }
     } catch (error: any) {
       console.error("Google login error:", error)

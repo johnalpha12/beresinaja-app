@@ -5,15 +5,21 @@ import { useEffect } from "react"
 import { useAuth } from "@/context/AuthContext"
 import { useRouter } from "next/navigation" // untuk Next.js App Router
 import { PageLoader } from "@/components/ui/PageLoader"
+import type { UserRole } from "@/types/user"
 
 interface Props {
   children: React.ReactNode
-  requiredRole?: "pengguna" | "teknisi" // opsional untuk role-based access
+  requiredRole?: UserRole | UserRole[] // opsional untuk role-based access
 }
 
 export default function ProtectedRoute({ children, requiredRole }: Props) {
   const { user, userData, loading } = useAuth()
   const router = useRouter()
+  const allowedRoles = Array.isArray(requiredRole)
+    ? requiredRole
+    : requiredRole
+      ? [requiredRole]
+      : null
 
   useEffect(() => {
     if (!loading) {
@@ -24,12 +30,12 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
       }
 
       // Jika ada requiredRole dan role tidak sesuai
-      if (requiredRole && userData?.role !== requiredRole) {
+      if (allowedRoles && (!userData?.role || !allowedRoles.includes(userData.role))) {
         router.push("/unauthorized") // atau ke halaman lain
         return
       }
     }
-  }, [user, loading, userData, requiredRole, router])
+  }, [allowedRoles, user, loading, userData, router])
 
   // Tampilkan loading
   if (loading) {
@@ -42,7 +48,7 @@ export default function ProtectedRoute({ children, requiredRole }: Props) {
   }
 
   // Jika ada requiredRole tapi tidak sesuai
-  if (requiredRole && userData?.role !== requiredRole) {
+  if (allowedRoles && (!userData?.role || !allowedRoles.includes(userData.role))) {
     return null
   }
 
