@@ -11,10 +11,14 @@ import {
   ShoppingBag,
   TrendingDown,
   TrendingUp,
+  Star,
+  X,
 } from "lucide-react"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { screenToPath, type Screen } from "@/types/navigation"
+import { useAuth } from "@/context/AuthContext"
+import { buildAuthHeaders } from "@/lib/auth"
 
 type TransactionType = "purchase" | "sale" | "service"
 type TransactionStatus = "success" | "pending" | "cancelled" | "shipped" | "processing"
@@ -29,6 +33,9 @@ type TransactionRecord = {
   status: TransactionStatus
   paymentMethod: string
   quantity?: number
+  isReviewed?: boolean
+  rating?: number
+  storeUid?: string
 }
 
 type TransactionHistoryContent = {
@@ -63,6 +70,7 @@ function formatCompactRupiah(amount: number) {
 
 export default function RiwayatTransaksiPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilter, setSelectedFilter] = useState<TransactionFilter>("all")
@@ -70,29 +78,59 @@ export default function RiwayatTransaksiPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // Review state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewTarget, setReviewTarget] = useState<TransactionRecord | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState("")
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+
   useEffect(() => {
     let isMounted = true
 
     async function loadTransactionHistory() {
+      if (authLoading) return
+      if (!user) {
+        setError("Silakan login kembali.")
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
         setError("")
 
-        const response = await fetch("/api/content/transaction-history", {
+        const response = await fetch("/api/orders", {
           cache: "no-store",
+          headers: await buildAuthHeaders(user)
         })
 
         if (!response.ok) {
           throw new Error("Gagal memuat riwayat transaksi.")
         }
 
-        const data = (await response.json()) as TransactionHistoryContent
+        const data = await response.json()
 
         if (!isMounted) {
           return
         }
 
-        setTransactions(Array.isArray(data.records) ? data.records : [])
+        const mappedRecords: TransactionRecord[] = (data.orders || []).map((o: any) => ({
+          id: o.id,
+          type: "purchase", // All current actual orders are from marketplace.
+          title: o.items?.[0]?.name || "Pembelian Produk",
+          subtitle: o.storeName || "Toko",
+          date: new Date(o.createdAt || Date.now()).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }),
+          amount: o.totalAmount ? `Rp ${new Intl.NumberFormat("id-ID").format(o.totalAmount)}` : "Rp 0",
+          status: o.status === "shipped" ? "shipped" : o.status === "completed" ? "success" : "processing",
+          paymentMethod: o.paymentMethod || "Transfer Virtual Account",
+          quantity: o.items?.[0]?.quantity || 1,
+          isReviewed: o.reviewed || false,
+          rating: o.rating || 0,
+          storeUid: o.storeUid || ""
+        }))
+
+        setTransactions(mappedRecords)
       } catch (nextError) {
         console.error("Failed to load transaction history:", nextError)
 
@@ -114,7 +152,7 @@ export default function RiwayatTransaksiPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [user, authLoading])
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((transaction) => {
@@ -222,6 +260,35 @@ export default function RiwayatTransaksiPage() {
     navigate("marketplace")
   }
 
+  const submitReview = async () => {
+    if (!reviewTarget || !user) return;
+    try {
+      setIsSubmittingReview(true);
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: await buildAuthHeaders(user),
+        body: JSON.stringify({
+          type: "product",
+          orderId: reviewTarget.id,
+          targetId: reviewTarget.storeUid || "dummyProduct",
+          rating: reviewRating,
+          comment: reviewComment
+        })
+      });
+      
+      if (res.ok) {
+        setTransactions(prev => prev.map(t => 
+          t.id === reviewTarget.id ? { ...t, isReviewed: true, rating: reviewRating } : t
+        ));
+        setReviewModalOpen(false);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <div className="sticky top-0 bg-white border-b border-[#E5E7EB] z-10">
@@ -316,12 +383,14 @@ export default function RiwayatTransaksiPage() {
               const typeColor = getTypeColor(transaction.type)
 
               return (
-                <button
+                <div
                   key={transaction.id}
-                  onClick={() => handleTransactionClick(transaction.type)}
                   className="w-full bg-white rounded-2xl p-5 border border-[#E5E7EB] hover:border-[#0288D1] hover:shadow-md transition-all text-left"
                 >
-                  <div className="flex gap-4">
+                  <div 
+                    className="flex gap-4 cursor-pointer"
+                    onClick={() => handleTransactionClick(transaction.type)}
+                  >
                     <div
                       className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
                       style={{ backgroundColor: `${typeColor}15` }}
@@ -370,16 +439,83 @@ export default function RiwayatTransaksiPage() {
                             {transaction.type === "sale" ? "+" : "-"} {transaction.amount}
                           </p>
                         </div>
-                        <ChevronRight className="w-5 h-5 text-[#9CA3AF]" />
+                        <div className="flex items-center gap-3">
+                          {transaction.rating && transaction.isReviewed ? (
+                            <div className="flex items-center gap-1">
+                              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                              <span className="text-sm text-[#4A4A4A]">{transaction.rating}.0</span>
+                            </div>
+                          ) : transaction.status === "success" && !transaction.isReviewed ? (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setReviewTarget(transaction);
+                                setReviewRating(5);
+                                setReviewComment("");
+                                setReviewModalOpen(true);
+                              }}
+                              className="text-xs bg-[#0288D1] text-white px-3 py-1.5 rounded-full hover:bg-[#0288D1]/90"
+                            >
+                              Beri Ulasan
+                            </button>
+                          ) : null}
+                          <button onClick={() => handleTransactionClick(transaction.type)}>
+                            <ChevronRight className="w-5 h-5 text-[#9CA3AF]" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </button>
+                </div>
               )
             })
           )}
         </div>
       </div>
+
+      {reviewModalOpen && reviewTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden select-none animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-[#E5E7EB]">
+              <h3 className="font-semibold text-[#4A4A4A]">Ulas Produk Toko</h3>
+              <button onClick={() => setReviewModalOpen(false)} className="text-[#9CA3AF] hover:bg-[#F8FAFC] p-1 rounded-full">
+                <X className="w-5 h-5"/>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+               <div>
+                  <p className="text-sm text-[#6B6B6B] mb-2 text-center">Bagaimana kualitas <span className="font-semibold text-[#4A4A4A]">{reviewTarget.title}</span>?</p>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button 
+                        key={star}
+                        onClick={() => setReviewRating(star)}
+                        className="p-1 transition-transform active:scale-95"
+                      >
+                        <Star className={`w-8 h-8 ${reviewRating >= star ? "fill-yellow-400 text-yellow-400" : "text-[#E5E7EB]"}`} />
+                      </button>
+                    ))}
+                  </div>
+               </div>
+               <div>
+                 <textarea
+                   value={reviewComment}
+                   onChange={e => setReviewComment(e.target.value)}
+                   placeholder="Bagaimana pelayanan dan kualitas barang ini?"
+                   className="w-full h-24 p-3 text-sm text-[#4A4A4A] bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl focus:border-[#0288D1] focus:bg-white outline-none resize-none transition-colors"
+                 />
+               </div>
+               <button 
+                 onClick={submitReview}
+                 disabled={isSubmittingReview}
+                 className="w-full bg-[#0288D1] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0288D1]/90 disabled:opacity-50"
+               >
+                 {isSubmittingReview ? "Menyimpan..." : "Kirim Ulasan"}
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-6 py-4">
         <div className="grid grid-cols-3 gap-4 text-center">

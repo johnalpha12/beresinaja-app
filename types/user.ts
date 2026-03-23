@@ -20,6 +20,8 @@ export type UserData = {
   role: UserRole
   createdAt: number
   city?: string
+  address?: string
+  avatarUrl?: string
   stats?: UserStats
   premium?: UserPremium
 }

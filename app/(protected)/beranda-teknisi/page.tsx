@@ -14,6 +14,7 @@ import {
   ChevronRight,
   DollarSign,
   Settings,
+  CheckCircle2,
 } from "lucide-react"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { PrimaryButton } from "@/components/ui/PrimaryButton"
@@ -51,6 +52,12 @@ export default function TechnicianHomePage() {
   const [actionLoading, setActionLoading] = useState("")
   const [actionError, setActionError] = useState("")
   const [isViewingNotifications, setIsViewingNotifications] = useState(false)
+  
+  const [completingOrder, setCompletingOrder] = useState<TechnicianDashboardOrder | null>(null)
+  const [completionForm, setCompletionForm] = useState({ notes: "", additionalCost: "" })
+
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState("")
 
   useEffect(() => {
     if (authLoading || !userData?.role) {
@@ -150,6 +157,7 @@ export default function TechnicianHomePage() {
     payload:
       | { action: "technician.acceptOrder"; orderId: string }
       | { action: "technician.rejectOrder"; orderId: string }
+      | { action: "technician.completeOrder"; orderId: string; notes?: string; additionalCost?: string }
   ) => {
     if (!user) {
       return
@@ -182,6 +190,21 @@ export default function TechnicianHomePage() {
 
   if (isViewingNotifications) {
     return <NotificationScreen role="teknisi" onBack={() => setIsViewingNotifications(false)} />
+  }
+
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || isNaN(Number(withdrawAmount)) || Number(withdrawAmount) <= 0) {
+      alert("Masukkan nominal tarik saldo yang valid.")
+      return
+    }
+    setActionLoading("withdraw")
+    // Simulasi tarik saldo
+    setTimeout(() => {
+      alert(`Berhasil menarik saldo sebesar Rp ${Number(withdrawAmount).toLocaleString("id-ID")}`)
+      setIsWithdrawing(false)
+      setWithdrawAmount("")
+      setActionLoading("")
+    }, 1500)
   }
 
   return (
@@ -245,15 +268,65 @@ export default function TechnicianHomePage() {
             <div className="pl-4">
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-white/80" />
-                <span className="text-xs text-white/80">Bulan Ini</span>
+                <span className="text-xs text-white/80">Bulan Ini (Tersedia)</span>
               </div>
               <p className="text-xl text-white">{technicianData.monthlyEarnings}</p>
             </div>
           </div>
+          <button 
+            onClick={() => setIsWithdrawing(true)}
+            className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white rounded-xl py-2.5 text-sm font-medium transition-colors border border-white/20 flex items-center justify-center gap-2"
+          >
+            <DollarSign className="w-4 h-4" />
+            Tarik Saldo
+          </button>
         </div>
       </div>
 
-      <div className="px-6 -mt-4 mb-6">
+      {isWithdrawing && (
+        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-xl font-bold text-[#4A4A4A] mb-2">Tarik Saldo</h3>
+            <p className="text-sm text-[#6B6B6B] mb-5">
+              Masukkan nominal pendapatan yang ingin ditarik ke rekening terdaftar Anda. (Maksimal: {technicianData.monthlyEarnings})
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[#6B6B6B] mb-2 uppercase tracking-wider">
+                Nominal Penarikan (Rp)
+              </label>
+              <input 
+                type="number" 
+                value={withdrawAmount} 
+                onChange={(e) => setWithdrawAmount(e.target.value)} 
+                placeholder="Contoh: 500000" 
+                className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1] transition-all"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsWithdrawing(false)
+                  setWithdrawAmount("")
+                }}
+                className="flex-1 py-3 px-4 rounded-xl border border-[#E5E7EB] text-[#4A4A4A] font-medium text-sm hover:bg-[#F8FAFC] transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                disabled={actionLoading !== ""}
+                onClick={handleWithdraw}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-br from-[#10B981] to-[#34D399] text-white font-medium text-sm hover:shadow-lg disabled:opacity-50 transition-all"
+              >
+                {actionLoading === "withdraw" ? "Memproses..." : "Tarik Sekarang"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-6 -mt-4 mb-6 relative z-10">
         <div className="grid grid-cols-4 gap-3">
           {stats.map((stat, index) => {
             const meta = technicianStatMeta[index] || technicianStatMeta[0]
@@ -434,9 +507,20 @@ export default function TechnicianHomePage() {
                       />
                     </div>
                   </div>
+                ) : order.status === "accepted" || order.status === "in-progress" ? (
+                  <button 
+                    onClick={() => {
+                      setCompletionForm({ notes: "", additionalCost: "" })
+                      setCompletingOrder(order)
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl bg-[#0288D1]/5 text-[#0288D1] hover:bg-[#0288D1]/10 transition-colors"
+                  >
+                    <span className="text-sm font-semibold">Tandai Selesai</span>
+                    <CheckCircle2 className="w-5 h-5" />
+                  </button>
                 ) : (
-                  <button className="w-full flex items-center justify-between p-3 rounded-xl bg-[#0288D1]/5 text-[#0288D1] hover:bg-[#0288D1]/10 transition-colors">
-                    <span className="text-sm">Lihat Detail Pekerjaan</span>
+                  <button className="w-full flex items-center justify-between p-3 rounded-xl bg-[#E5E7EB]/50 text-[#6B6B6B] hover:bg-[#E5E7EB] transition-colors">
+                    <span className="text-sm">Lihat Detail Riwayat</span>
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 )}

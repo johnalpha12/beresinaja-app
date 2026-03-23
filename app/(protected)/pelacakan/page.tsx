@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   Phone,
@@ -35,6 +35,8 @@ const TRACKING_ENDPOINT = "/api/orders/sample"
 
 export default function PelacakanPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const orderId = searchParams.get("orderId")
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
   const [tracking, setTracking] = useState<TrackingData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -49,7 +51,8 @@ export default function PelacakanPage() {
       try {
         setLoading(true)
         setError("")
-        const response = await fetch(TRACKING_ENDPOINT, {
+        const endpoint = orderId ? `/api/orders/${orderId}` : "/api/orders/sample"
+        const response = await fetch(endpoint, {
           cache: "no-store",
         })
 
@@ -68,7 +71,7 @@ export default function PelacakanPage() {
     }
 
     void loadTracking()
-  }, [])
+  }, [orderId])
 
   const serviceCostConfirmation = tracking?.serviceCostConfirmation || null
   const isAwaitingConfirmation = serviceCostConfirmation?.status === "pending"
@@ -80,7 +83,8 @@ export default function PelacakanPage() {
     try {
       setPendingAction(action)
       setActionError("")
-      const response = await fetch(TRACKING_ENDPOINT, {
+      const endpoint = orderId ? `/api/orders/${orderId}` : "/api/orders/sample"
+      const response = await fetch(endpoint, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -175,12 +179,21 @@ export default function PelacakanPage() {
           </div>
 
           <div className="bg-card rounded-2xl border border-border p-4 flex justify-between items-center">
-            <div>
-              <p className="text-sm font-semibold">Teknisi Anda</p>
-              <p className="text-xs text-muted-foreground">
-                {tracking?.technicianRating || "-"} {"\u2022"} {tracking?.technicianCompleted || "-"}
-              </p>
-            </div>
+            {tracking?.courier || tracking?.receiptNumber ? (
+              <div>
+                <p className="text-sm font-semibold">Kurir Pengiriman</p>
+                <p className="text-xs text-muted-foreground">
+                  {tracking?.courier || "Kurir Reguler"} {"\u2022"} Resi: {tracking?.receiptNumber || "-"}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-sm font-semibold">Teknisi Anda</p>
+                <p className="text-xs text-muted-foreground">
+                  {tracking?.technicianRating || "-"} {"\u2022"} {tracking?.technicianCompleted || "-"}
+                </p>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <button className="w-9 h-9 rounded-full bg-secondary border border-primary/20 flex items-center justify-center">

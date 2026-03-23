@@ -14,7 +14,10 @@ import {
   Settings,
   Trash2
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, writeBatch, deleteDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 
 type NotificationType = 
   | "order" 
@@ -41,130 +44,52 @@ interface NotificationScreenProps {
   role: "pengguna" | "toko" | "teknisi";
 }
 
-const getDummyNotifications = (role: "pengguna" | "toko" | "teknisi"): AppNotification[] => {
-  if (role === "toko") {
-    return [
-      {
-        id: "notif-toko-1",
-        type: "order",
-        title: "Pesanan Marketplace Baru",
-        message: "Ada pesanan baru #ORD-TK-001 untuk iPhone 13 Pro 256GB. Silakan segera proses pesanan.",
-        time: "5 menit yang lalu",
-        isRead: false,
-        actionText: "Proses Pesanan"
-      },
-      {
-        id: "notif-toko-2",
-        type: "payment",
-        title: "Pencairan Dana Berhasil",
-        message: "Dana sebesar Rp 2.500.000 telah berhasil dicairkan ke rekening Anda.",
-        time: "1 jam yang lalu",
-        isRead: false
-      },
-      {
-        id: "notif-toko-3",
-        type: "alert",
-        title: "Stok Barang Menipis",
-        message: "Stok Tempered Glass iPhone 12 tinggal 2 buah. Segera tambahkan stok untuk menghindari kehabisan barang.",
-        time: "1 hari yang lalu",
-        isRead: true,
-        actionText: "Tambah Stok"
-      },
-      {
-        id: "notif-toko-4",
-        type: "system",
-        title: "Panduan Berjualan Mulus",
-        message: "Yuk pelajari cara mengoptimalkan toko Anda agar lebih banyak pembeli di BeresinAja.",
-        time: "3 hari yang lalu",
-        isRead: true
-      }
-    ];
-  }
-
-  if (role === "teknisi") {
-    return [
-      {
-        id: "notif-tek-1",
-        type: "service",
-        title: "Panggilan Servis Baru Masuk!",
-        message: "Order Ganti LCD Samsung A52 di Jl. Sudirman. Estimasi harga Rp 600.000. Konfirmasi segera.",
-        time: "2 menit yang lalu",
-        isRead: false,
-        actionText: "Terima Order"
-      },
-      {
-        id: "notif-tek-2",
-        type: "payment",
-        title: "Komisi Pekerjaan Masuk",
-        message: "Komisi sebesar Rp 150.000 untuk perbaikan Install Ulang Laptop telah masuk ke Dompet.",
-        time: "2 jam yang lalu",
-        isRead: false
-      },
-      {
-        id: "notif-tek-3",
-        type: "review",
-        title: "Ulasan Bintang 5 Baru",
-        message: "Pelanggan Budi memberikan ulasan Bintang 5: 'Teknisi sangat ramah dan handal!'.",
-        time: "1 hari yang lalu",
-        isRead: true
-      },
-      {
-        id: "notif-tek-4",
-        type: "alert",
-        title: "Performa Di Bawah Rata-Rata",
-        message: "Persentase penolakan order Anda cukup tinggi minggu ini. Pertahankan tingkat penerimaan order Anda agar tetap aktif.",
-        time: "2 hari yang lalu",
-        isRead: true
-      }
-    ];
-  }
-
-  // Pengguna (User Default)
-  return [
-    {
-      id: "notif-usr-001",
-      type: "order",
-      title: "Pesanan Berhasil Dibuat",
-      message: "Pesanan #ORD-20240318-001 untuk Ganti LCD iPhone 13 Pro telah berhasil dibuat. Teknisi akan segera mengonfirmasi.",
-      time: "2 menit yang lalu",
-      isRead: false,
-      actionText: "Lihat Pesanan",
-      actionUrl: "/tracking"
-    },
-    {
-      id: "notif-usr-002",
-      type: "service",
-      title: "Teknisi Dalam Perjalanan",
-      message: "Ahmad Hidayat sedang dalam perjalanan ke lokasi Anda. Estimasi tiba 15 menit lagi.",
-      time: "15 menit yang lalu",
-      isRead: false,
-      actionText: "Tracking",
-      actionUrl: "/tracking"
-    },
-    {
-      id: "notif-usr-006",
-      type: "promo",
-      title: "🎉 Promo Spesial Weekend!",
-      message: "Dapatkan diskon 25% untuk semua servis smartphone. Gunakan kode: WEEKEND25. Berlaku hingga Minggu.",
-      time: "5 jam yang lalu",
-      isRead: true,
-      actionText: "Gunakan Promo"
-    },
-    {
-      id: "notif-usr-007",
-      type: "order",
-      title: "Pesanan Marketplace Dikirim",
-      message: "Pesanan iPhone 13 Pro 256GB Anda dari toko telah dikirim. Estimasi tiba 2-3 hari kerja.",
-      time: "1 hari yang lalu",
-      isRead: true,
-      actionText: "Lacak Paket"
-    }
-  ];
-};
-
 export function NotificationScreen({ onBack, role }: NotificationScreenProps) {
   const [activeTab, setActiveTab] = useState<"all" | "unread">("all");
-  const [notifications, setNotifications] = useState<AppNotification[]>(getDummyNotifications(role));
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, "notifications"),
+      where("userId", "==", user.uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs: AppNotification[] = [];
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        
+        let timeStr = "Baru saja";
+        if (data.createdAt) {
+           const diffMins = Math.floor((Date.now() - data.createdAt.toMillis()) / 60000);
+           if (diffMins < 1) timeStr = "Baru saja";
+           else if (diffMins < 60) timeStr = `${diffMins} menit yang lalu`;
+           else if (diffMins < 1440) timeStr = `${Math.floor(diffMins/60)} jam yang lalu`;
+           else timeStr = `${Math.floor(diffMins/1440)} hari yang lalu`;
+        }
+
+        notifs.push({
+          id: docSnap.id,
+          type: data.type || "system",
+          title: data.title || "",
+          message: data.message || "",
+          time: timeStr,
+          isRead: data.isRead || false,
+          actionText: data.actionText,
+          actionUrl: data.actionUrl
+        });
+      });
+      setNotifications(notifs);
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const getNotificationIcon = (type: NotificationType) => {
     switch (type) {
@@ -192,18 +117,35 @@ export function NotificationScreen({ onBack, role }: NotificationScreenProps) {
     }
   };
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(notif => 
-      notif.id === id ? { ...notif, isRead: true } : notif
-    ));
+  const markAsRead = async (id: string) => {
+    try {
+      await updateDoc(doc(db, "notifications", id), { isRead: true });
+    } catch(e) {
+      console.error(e);
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(notif => ({ ...notif, isRead: true })));
+  const markAllAsRead = async () => {
+    if (!user) return;
+    try {
+      const batch = writeBatch(db);
+      notifications.forEach(n => {
+        if (!n.isRead) {
+          batch.update(doc(db, "notifications", n.id), { isRead: true });
+        }
+      });
+      await batch.commit();
+    } catch(e) {
+      console.error(e);
+    }
   };
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(notif => notif.id !== id));
+  const deleteNotification = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, "notifications", id));
+    } catch(e) {
+      console.error(e);
+    }
   };
 
   const filteredNotifications = activeTab === "all" 

@@ -275,6 +275,8 @@ export function normalizeTrackingData(value: unknown): TrackingData {
     pickupType: getString(rawTracking.pickupType, ""),
     technicianRating: getString(rawTracking.technicianRating, ""),
     technicianCompleted: getString(rawTracking.technicianCompleted, ""),
+    courier: getString(rawTracking.courier, ""),
+    receiptNumber: getString(rawTracking.receiptNumber, ""),
     steps,
     serviceCostConfirmation,
   }

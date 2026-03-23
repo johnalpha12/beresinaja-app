@@ -16,6 +16,8 @@ import {
   Settings,
   BarChart3,
   Box,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { StatusChip } from "@/components/ui/StatusChip"
@@ -56,6 +58,15 @@ export default function StoreHomePage() {
   const [isAddingProduct, setIsAddingProduct] = useState(false)
   const [isViewingStats, setIsViewingStats] = useState(false)
   const [isViewingNotifications, setIsViewingNotifications] = useState(false)
+  
+  const [processingOrder, setProcessingOrder] = useState<StoreDashboardOrder | null>(null)
+  const [trackingNumber, setTrackingNumber] = useState("")
+
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
+  const [withdrawAmount, setWithdrawAmount] = useState("")
+
+  const [editingProduct, setEditingProduct] = useState<StoreDashboardProduct | null>(null)
+  const [editForm, setEditForm] = useState({ name: "", price: "", stock: "" })
 
   useEffect(() => {
     if (authLoading || !userData?.role) {
@@ -200,14 +211,22 @@ export default function StoreHomePage() {
   const mutateStoreDashboard = async (
     payload:
       | { action: "store.addProduct"; productData?: any }
-      | { action: "store.processOrder"; orderId: string }
+      | { action: "store.processOrder"; orderId: string; trackingNumber?: string }
+      | { action: "store.editProduct"; productData: any }
+      | { action: "store.deleteProduct"; productData: { id: string } }
   ) => {
     if (!user) {
       return
     }
 
     try {
-      setActionLoading(payload.action === "store.addProduct" ? "add-product" : payload.orderId)
+      setActionLoading(
+        payload.action === "store.addProduct"
+          ? "add-product"
+          : ("orderId" in payload ? payload.orderId : null) ||
+            ("productData" in payload ? payload.productData?.id : null) ||
+            "unknown"
+      )
       setActionError("")
 
       const response = await fetch("/api/dashboard", {
@@ -256,8 +275,147 @@ export default function StoreHomePage() {
     return <NotificationScreen role="toko" onBack={() => setIsViewingNotifications(false)} />
   }
 
+  const handleWithdraw = async () => {
+    if (!withdrawAmount || isNaN(Number(withdrawAmount)) || Number(withdrawAmount) <= 0) {
+      alert("Masukkan nominal tarik saldo yang valid.")
+      return
+    }
+    setActionLoading("withdraw")
+    // Simulasi tarik saldo
+    setTimeout(() => {
+      alert(`Berhasil menarik saldo sebesar Rp ${Number(withdrawAmount).toLocaleString("id-ID")}`)
+      setIsWithdrawing(false)
+      setWithdrawAmount("")
+      setActionLoading("")
+    }, 1500)
+  }
+
+  const handleEditProductClick = (product: StoreDashboardProduct) => {
+    const rawPrice = product.price.replace(/\D/g, "")
+    setEditForm({ name: product.name, price: rawPrice, stock: product.stock.toString() })
+    setEditingProduct(product)
+  }
+
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col relative">
+      {editingProduct && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-xl font-bold text-[#4A4A4A] mb-4">Edit Produk</h3>
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6B6B] mb-1 uppercase">Nama Produk</label>
+                <input 
+                  type="text" 
+                  value={editForm.name} 
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} 
+                  className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6B6B] mb-1 uppercase">Harga (Rp)</label>
+                <input 
+                  type="number" 
+                  value={editForm.price} 
+                  onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} 
+                  className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1]"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#6B6B6B] mb-1 uppercase">Stok</label>
+                <input 
+                  type="number" 
+                  value={editForm.stock} 
+                  onChange={(e) => setEditForm({ ...editForm, stock: e.target.value })} 
+                  className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1]"
+                />
+              </div>
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setEditingProduct(null)}
+                className="flex-1 py-3 px-4 rounded-xl border border-[#E5E7EB] text-[#4A4A4A] font-medium text-sm hover:bg-[#F8FAFC]"
+              >
+                Batal
+              </button>
+              <button 
+                disabled={actionLoading !== ""}
+                onClick={async () => {
+                  await mutateStoreDashboard({ 
+                    action: "store.editProduct", 
+                    productData: {
+                      id: editingProduct.id,
+                      name: editForm.name,
+                      price: editForm.price,
+                      stock: editForm.stock
+                    }
+                  })
+                  setEditingProduct(null)
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] text-white font-medium text-sm hover:shadow-lg disabled:opacity-50"
+              >
+                {actionLoading !== "" ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {processingOrder && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <div className="w-12 h-12 rounded-full bg-[#0288D1]/10 flex items-center justify-center text-[#0288D1] mb-4">
+              <Package className="w-6 h-6" />
+            </div>
+            <h3 className="text-xl font-bold text-[#4A4A4A] mb-1">Kirim Pesanan</h3>
+            <p className="text-sm text-[#6B6B6B] mb-5">
+              Masukkan nomor resi pengiriman untuk <span className="font-semibold text-[#4A4A4A]">{processingOrder.productName}</span>.
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[#6B6B6B] mb-2 uppercase tracking-wider">
+                Nomor Resi
+              </label>
+              <input 
+                type="text" 
+                value={trackingNumber} 
+                onChange={(e) => setTrackingNumber(e.target.value)} 
+                placeholder="Contoh: RESI-12345678" 
+                className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1] transition-all"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setProcessingOrder(null)
+                  setTrackingNumber("")
+                }}
+                className="flex-1 py-3 px-4 rounded-xl border border-[#E5E7EB] text-[#4A4A4A] font-medium text-sm hover:bg-[#F8FAFC] transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                disabled={!trackingNumber.trim() || actionLoading !== ""}
+                onClick={async () => {
+                  await mutateStoreDashboard({ 
+                    action: "store.processOrder", 
+                    orderId: processingOrder.id, 
+                    trackingNumber 
+                  })
+                  setProcessingOrder(null)
+                  setTrackingNumber("")
+                }}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] text-white font-medium text-sm hover:shadow-lg disabled:opacity-50 transition-all"
+              >
+                {actionLoading === processingOrder.id ? "Memproses..." : "Kirim"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] px-6 pt-6 pb-8">
         <div className="flex items-center justify-between mb-6">
           <button className="text-white p-2 hover:bg-white/10 rounded-full -ml-2">
@@ -315,15 +473,65 @@ export default function StoreHomePage() {
             <div className="pl-4">
               <div className="flex items-center gap-2 mb-1">
                 <TrendingUp className="w-4 h-4 text-white/80" />
-                <span className="text-xs text-white/80">Bulan Ini</span>
+                <span className="text-xs text-white/80">Bulan Ini (Tersedia)</span>
               </div>
               <p className="text-xl text-white">{storeData.monthlySales}</p>
             </div>
           </div>
+          <button 
+            onClick={() => setIsWithdrawing(true)}
+            className="w-full mt-4 bg-white/20 hover:bg-white/30 text-white rounded-xl py-2.5 text-sm font-medium transition-colors border border-white/20 flex items-center justify-center gap-2"
+          >
+            <DollarSign className="w-4 h-4" />
+            Tarik Saldo
+          </button>
         </div>
       </div>
 
-      <div className="px-6 -mt-4 mb-6">
+      {isWithdrawing && (
+        <div className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-xl font-bold text-[#4A4A4A] mb-2">Tarik Saldo</h3>
+            <p className="text-sm text-[#6B6B6B] mb-5">
+              Masukkan nominal saldo yang ingin ditarik ke rekening terdaftar Anda. (Maksimal: {storeData.monthlySales})
+            </p>
+            
+            <div className="mb-6">
+              <label className="block text-xs font-semibold text-[#6B6B6B] mb-2 uppercase tracking-wider">
+                Nominal Penarikan (Rp)
+              </label>
+              <input 
+                type="number" 
+                value={withdrawAmount} 
+                onChange={(e) => setWithdrawAmount(e.target.value)} 
+                placeholder="Contoh: 500000" 
+                className="w-full bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#0288D1]/20 focus:border-[#0288D1] transition-all"
+              />
+            </div>
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => {
+                  setIsWithdrawing(false)
+                  setWithdrawAmount("")
+                }}
+                className="flex-1 py-3 px-4 rounded-xl border border-[#E5E7EB] text-[#4A4A4A] font-medium text-sm hover:bg-[#F8FAFC] transition-colors"
+              >
+                Batal
+              </button>
+              <button 
+                disabled={actionLoading !== ""}
+                onClick={handleWithdraw}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-br from-[#10B981] to-[#34D399] text-white font-medium text-sm hover:shadow-lg disabled:opacity-50 transition-all"
+              >
+                {actionLoading === "withdraw" ? "Memproses..." : "Tarik Sekarang"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="px-6 -mt-4 mb-6 relative z-10">
         <div className="grid grid-cols-4 gap-3">
           {stats.map((stat, index) => {
             const meta = storeStatMeta[index] || storeStatMeta[0]
@@ -440,14 +648,9 @@ export default function StoreHomePage() {
                 {order.status === "pending" && (
                   <div className="flex gap-3">
                     <PrimaryButton
-                      label={actionLoading === order.id ? "Menyimpan..." : "Proses Pesanan"}
-                      onClick={() =>
-                        void mutateStoreDashboard({
-                          action: "store.processOrder",
-                          orderId: order.id,
-                        })
-                      }
-                      disabled={actionLoading !== "" && actionLoading !== order.id}
+                      label="Proses Pesanan"
+                      onClick={() => setProcessingOrder(order)}
+                      disabled={actionLoading !== ""}
                     />
                   </div>
                 )}
@@ -520,9 +723,31 @@ export default function StoreHomePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm text-[#4A4A4A]">{product.rating}</span>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm text-[#4A4A4A]">{product.rating}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          disabled={actionLoading !== ""}
+                          onClick={() => handleEditProductClick(product)}
+                          className="p-2 bg-[#0288D1]/10 text-[#0288D1] rounded-lg hover:bg-[#0288D1]/20 transition-colors disabled:opacity-50"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button 
+                          disabled={actionLoading !== ""}
+                          onClick={() => {
+                            if (window.confirm("Apakah Anda yakin ingin menghapus produk ini?")) {
+                              void mutateStoreDashboard({ action: "store.deleteProduct", productData: { id: product.id } })
+                            }
+                          }}
+                          className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

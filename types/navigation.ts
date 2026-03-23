@@ -20,6 +20,8 @@ export type Screen =
   | "profile"
   | "chatAi"
   | "jualBarang"
+  | "inbox"
+  | "chat"
 
 const LEGACY_SCREEN_ALIASES = {
   "forgot-password": "forgotPassword",
@@ -57,6 +59,8 @@ export const SCREEN_PATHS: Record<Screen, string> = {
   profile: "/profil",
   chatAi: "/chat-ai",
   jualBarang: "/jual-barang",
+  inbox: "/pesan",
+  chat: "/chat",
 }
 
 export function normalizeScreen(screen: ScreenLike): Screen {

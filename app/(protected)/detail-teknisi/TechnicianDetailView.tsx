@@ -21,6 +21,9 @@ import { PrimaryButton } from "@/components/ui/PrimaryButton"
 import { OutlineButton } from "@/components/ui/OutlineButton"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { PageLoader } from "@/components/ui/PageLoader"
+import { useAuth } from "@/context/AuthContext"
+import { db } from "@/lib/firebase"
+import { doc, getDoc, setDoc } from "firebase/firestore"
 import {
   screenToPath,
   type Screen,
@@ -107,6 +110,28 @@ export default function TechnicianDetailView({ technicianId }: Props) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [liked, setLiked] = useState(false)
+  const { user } = useAuth()
+
+  const startChat = async () => {
+    if (!user || !technician) return;
+    const techUid = technician.id;
+    const chatId = [user.uid, techUid].sort().join('_');
+    const chatRef = doc(db, "chats", chatId);
+    const snap = await getDoc(chatRef);
+    if (!snap.exists()) {
+      await setDoc(chatRef, {
+        participants: [user.uid, techUid],
+        participantNames: {
+          [user.uid]: user.email?.split("@")[0] || user.displayName || "Pelanggan",
+          [techUid]: technician.name || "Teknisi",
+        },
+        lastMessage: "Percakapan baru dibuat",
+        lastMessageTime: Date.now(),
+        unreadCount: { [techUid]: 0, [user.uid]: 0 }
+      });
+    }
+    router.push(`/chat/${chatId}`);
+  };
 
   useEffect(() => {
     async function loadTechnician() {
@@ -466,12 +491,12 @@ export default function TechnicianDetailView({ technicianId }: Props) {
           <OutlineButton
             label="Chat"
             className="flex-1"
-            onClick={() => navigate("chatAi")}
+            onClick={startChat}
           />
           <div className="flex-[2]">
             <PrimaryButton
               label="Booking Sekarang"
-              onClick={() => navigate("servisPerangkat")}
+              onClick={() => router.push(`/booking-servis?techId=${technicianId}`)}
             />
           </div>
         </div>

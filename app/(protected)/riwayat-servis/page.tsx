@@ -10,10 +10,13 @@ import {
   Search,
   Star,
   Wrench,
+  X,
 } from "lucide-react"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { screenToPath, type Screen } from "@/types/navigation"
+import { useAuth } from "@/context/AuthContext"
+import { buildAuthHeaders } from "@/lib/auth"
 
 type ServiceStatus = "completed" | "cancelled" | "ongoing"
 
@@ -26,6 +29,8 @@ type ServiceRecord = {
   status: ServiceStatus
   price: string
   rating?: number
+  isReviewed?: boolean
+  technicianId?: string
   location: string
   duration: string
   issues: string[]
@@ -63,6 +68,7 @@ function formatCompactRupiah(amount: number) {
 
 export default function RiwayatServisPage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFilter, setSelectedFilter] = useState<ServiceFilter>("all")
@@ -70,29 +76,66 @@ export default function RiwayatServisPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // Review state
+  const [reviewModalOpen, setReviewModalOpen] = useState(false)
+  const [reviewTarget, setReviewTarget] = useState<ServiceRecord | null>(null)
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewComment, setReviewComment] = useState("")
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false)
+
   useEffect(() => {
     let isMounted = true
 
     async function loadServiceHistory() {
+      if (authLoading) return
+      if (!user) {
+        setError("Silakan login untuk melihat riwayat")
+        setLoading(false)
+        return
+      }
+
       try {
         setLoading(true)
         setError("")
 
-        const response = await fetch("/api/content/service-history", {
+        const response = await fetch("/api/serviceOrders", {
           cache: "no-store",
+          headers: await buildAuthHeaders(user)
         })
 
         if (!response.ok) {
           throw new Error("Gagal memuat riwayat servis.")
         }
 
-        const data = (await response.json()) as ServiceHistoryContent
+        const data = await response.json()
 
         if (!isMounted) {
           return
         }
 
-        setServices(Array.isArray(data.records) ? data.records : [])
+        const mappedServices: ServiceRecord[] = (data.serviceOrders || []).map((o: any) => ({
+          id: o.id,
+          serviceType: o.serviceType || "Servis",
+          deviceName: o.deviceName || "Perangkat",
+          technician: o.technicianName || "Teknisi Mitra",
+          date: new Date(o.createdAt || Date.now()).toLocaleDateString("id-ID", { day: 'numeric', month: 'short', year: 'numeric' }),
+          status: (o.status === "accepted" || o.status === "in-progress" || o.status === "active") 
+            ? "ongoing" 
+            : o.status === "rejected" || o.status === "cancelled" 
+              ? "cancelled" 
+              : o.status === "completed" 
+                ? "completed" 
+                : "ongoing", // default fallback for pending
+          price: o.estimatedPrice || "Rp 0",
+          rating: o.rating || 0,
+          isReviewed: o.reviewed || false,
+          technicianId: o.technicianId || "",
+          location: o.location || "Lokasi Pelanggan",
+          duration: "Estimasi 1-2 Jam",
+          issues: o.issues || []
+        }))
+
+        setServices(mappedServices)
       } catch (nextError) {
         console.error("Failed to load service history:", nextError)
 
@@ -114,7 +157,7 @@ export default function RiwayatServisPage() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [user, authLoading])
 
   const filteredServices = useMemo(() => {
     return services.filter((service) => {
@@ -168,6 +211,35 @@ export default function RiwayatServisPage() {
         return "Dibatalkan"
     }
   }
+
+  const submitReview = async () => {
+    if (!reviewTarget || !user) return;
+    try {
+      setIsSubmittingReview(true);
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: await buildAuthHeaders(user),
+        body: JSON.stringify({
+          type: "service",
+          orderId: reviewTarget.id,
+          targetId: reviewTarget.technicianId,
+          rating: reviewRating,
+          comment: reviewComment
+        })
+      });
+      
+      if (res.ok) {
+        setServices(prev => prev.map(s => 
+          s.id === reviewTarget.id ? { ...s, isReviewed: true, rating: reviewRating } : s
+        ));
+        setReviewModalOpen(false);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
@@ -240,12 +312,14 @@ export default function RiwayatServisPage() {
             </div>
           ) : (
             filteredServices.map((service) => (
-              <button
+              <div
                 key={service.id}
-                onClick={() => navigate("tracking")}
                 className="w-full bg-white rounded-2xl p-5 border border-[#E5E7EB] hover:border-[#0288D1] hover:shadow-md transition-all text-left"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div 
+                  className="flex items-start justify-between mb-3 cursor-pointer"
+                  onClick={() => navigate("tracking")}
+                >
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0288D1]/10 to-[#4FC3F7]/10 flex items-center justify-center flex-shrink-0">
@@ -303,20 +377,79 @@ export default function RiwayatServisPage() {
                     <p className="text-sm text-[#0288D1]">{service.price}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {service.rating ? (
+                    {service.rating && service.isReviewed ? (
                       <div className="flex items-center gap-1">
                         <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                         <span className="text-sm text-[#4A4A4A]">{service.rating}.0</span>
                       </div>
+                    ) : service.status === "completed" && !service.isReviewed ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReviewTarget(service);
+                          setReviewRating(5);
+                          setReviewComment("");
+                          setReviewModalOpen(true);
+                        }}
+                        className="text-xs bg-[#0288D1] text-white px-3 py-1.5 rounded-full hover:bg-[#0288D1]/90"
+                      >
+                        Beri Ulasan
+                      </button>
                     ) : null}
-                    <ChevronRight className="w-5 h-5 text-[#9CA3AF]" />
+                    <button onClick={() => navigate("tracking")}>
+                      <ChevronRight className="w-5 h-5 text-[#9CA3AF]" />
+                    </button>
                   </div>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>
       </div>
+
+      {reviewModalOpen && reviewTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden select-none animate-in fade-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-[#E5E7EB]">
+              <h3 className="font-semibold text-[#4A4A4A]">Ulas Servis</h3>
+              <button onClick={() => setReviewModalOpen(false)} className="text-[#9CA3AF] hover:bg-[#F8FAFC] p-1 rounded-full">
+                <X className="w-5 h-5"/>
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+               <div>
+                  <p className="text-sm text-[#6B6B6B] mb-2 text-center">Bagaimana performa <span className="font-semibold text-[#4A4A4A]">{reviewTarget.technician}</span>?</p>
+                  <div className="flex justify-center gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button 
+                        key={star}
+                        onClick={() => setReviewRating(star)}
+                        className="p-1 transition-transform active:scale-95"
+                      >
+                        <Star className={`w-8 h-8 ${reviewRating >= star ? "fill-yellow-400 text-yellow-400" : "text-[#E5E7EB]"}`} />
+                      </button>
+                    ))}
+                  </div>
+               </div>
+               <div>
+                 <textarea
+                   value={reviewComment}
+                   onChange={e => setReviewComment(e.target.value)}
+                   placeholder="Bagaimana pelayanan teknisi ini?"
+                   className="w-full h-24 p-3 text-sm text-[#4A4A4A] bg-[#F8FAFC] border border-[#E5E7EB] rounded-xl focus:border-[#0288D1] focus:bg-white outline-none resize-none transition-colors"
+                 />
+               </div>
+               <button 
+                 onClick={submitReview}
+                 disabled={isSubmittingReview}
+                 className="w-full bg-[#0288D1] text-white rounded-xl py-3 text-sm font-semibold hover:bg-[#0288D1]/90 disabled:opacity-50"
+               >
+                 {isSubmittingReview ? "Menyimpan..." : "Kirim Ulasan"}
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E5E7EB] px-6 py-4">
         <div className="grid grid-cols-3 gap-4 text-center">

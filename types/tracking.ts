@@ -37,9 +37,11 @@ export type TrackingData = {
   eta: string
   pickupType: string
   technicianRating: string
-  technicianCompleted: string
+  technicianCompleted?: string
   steps: TrackingStep[]
   serviceCostConfirmation: ServiceCostConfirmation | null
+  courier?: string
+  receiptNumber?: string
 }
 
 export type OrderTrackingMutationAction =

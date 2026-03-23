@@ -16,6 +16,7 @@ import {
 import { PrimaryButton } from "@/components/ui/PrimaryButton"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { screenToPath } from "@/types/navigation"
+import { useCart } from "@/components/context/CartContext"
 
 const CHECKOUT_ADDRESSES_STORAGE_KEY = "beresinaja.checkout.addresses"
 const CHECKOUT_SELECTED_ADDRESS_STORAGE_KEY =
@@ -243,6 +244,8 @@ function CheckoutContent() {
     }
   }
 
+  const { items: cartItems, totalPrice: cartTotal, clearCart } = useCart()
+
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("regular")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("bank")
@@ -321,7 +324,20 @@ function CheckoutContent() {
     }
 
     void loadCheckout()
-  }, [])
+  }, [productIdQuery])
+
+  useEffect(() => {
+    if (!loading && !productIdQuery && cartItems.length > 0 && !product) {
+      setProduct({
+        id: "cart",
+        name: "Pesanan Keranjang",
+        variant: `${cartItems.length} produk`,
+        price: cartTotal,
+        quantity: 1,
+        image: "🛒",
+      })
+    }
+  }, [loading, productIdQuery, cartItems, cartTotal, product])
 
   useEffect(() => {
     if (loading) {
@@ -510,6 +526,9 @@ function CheckoutContent() {
       }
       
       const responseData = await res.json();
+      if (!productIdQuery) {
+        clearCart()
+      }
       onSuccess(responseData.orderId)
     } catch (e) {
       alert("Gagal memproses checkout.")
@@ -544,25 +563,45 @@ function CheckoutContent() {
         <div className="p-6 space-y-4">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E5E7EB]">
             <h2 className="text-[#4A4A4A] mb-4">Produk</h2>
-            <div className="flex gap-4">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#F8FAFC] to-[#E5E7EB] rounded-xl flex items-center justify-center text-4xl flex-shrink-0">
-                {product?.image || ""}
-              </div>
-              <div className="flex-1">
-                <h3 className="text-[#4A4A4A] mb-1">{product?.name || "-"}</h3>
-                <p className="text-sm text-[#6B6B6B] mb-2">
-                  {product?.variant || "-"}
-                </p>
-                <div className="flex justify-between items-center">
-                  <span className="text-[#0288D1]">
-                    {formatPrice(product?.price || 0)}
-                  </span>
-                  <span className="text-sm text-[#6B6B6B]">
-                    x{product?.quantity || 0}
-                  </span>
+            {!productIdQuery && cartItems.length > 0 ? (
+               <div className="space-y-4">
+                 {cartItems.map(item => (
+                   <div key={item.id} className="flex gap-4">
+                     <div className="w-16 h-16 bg-gradient-to-br from-[#F8FAFC] to-[#E5E7EB] rounded-xl flex items-center justify-center text-2xl flex-shrink-0">
+                       {item.image || "📱"}
+                     </div>
+                     <div className="flex-1">
+                       <h3 className="text-[#4A4A4A] mb-1 text-sm">{item.name}</h3>
+                       <p className="text-xs text-[#6B6B6B] mb-1">{item.variant}</p>
+                       <div className="flex justify-between items-center">
+                         <span className="text-[#0288D1] text-sm">{formatPrice(item.price)}</span>
+                         <span className="text-xs text-[#6B6B6B]">x{item.quantity}</span>
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            ) : (
+                <div className="flex gap-4">
+                <div className="w-20 h-20 bg-gradient-to-br from-[#F8FAFC] to-[#E5E7EB] rounded-xl flex items-center justify-center text-4xl flex-shrink-0">
+                    {product?.image || ""}
                 </div>
-              </div>
-            </div>
+                <div className="flex-1">
+                    <h3 className="text-[#4A4A4A] mb-1">{product?.name || "-"}</h3>
+                    <p className="text-sm text-[#6B6B6B] mb-2">
+                    {product?.variant || "-"}
+                    </p>
+                    <div className="flex justify-between items-center">
+                    <span className="text-[#0288D1]">
+                        {formatPrice(product?.price || 0)}
+                    </span>
+                    <span className="text-sm text-[#6B6B6B]">
+                        x{product?.quantity || 0}
+                    </span>
+                    </div>
+                </div>
+                </div>
+            )}
           </div>
 
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-[#E5E7EB]">

@@ -30,10 +30,12 @@ export async function POST(request: NextRequest) {
     const token = getBearerToken(request)
     let buyerName = "Guest User"
     let buyerAvatar = "👤"
+    let buyerUid = ""
     
     if (token) {
       try {
         const decodedToken = await adminAuth.verifyIdToken(token)
+        buyerUid = decodedToken.uid
         if (decodedToken.name) {
           buyerName = decodedToken.name
           buyerAvatar = decodedToken.name.charAt(0).toUpperCase()
@@ -104,8 +106,56 @@ export async function POST(request: NextRequest) {
       estimatedDelivery: "3-5 Hari",
       paymentMethod: paymentMethod || "Transfer Bank",
       status: "pending",
-      storeUid: storeUid
+      storeUid: storeUid,
+      userId: buyerUid,
+      createdAt: Date.now(),
+      tracking: {
+        orderId: newOrder.id,
+        statusBadge: "Dikemas",
+        statusLabel: "Menunggu Penjual",
+        deviceName: newOrder.productName,
+        deviceIssue: "Pembelian Produk",
+        eta: "3-5 Hari",
+        pickupType: "Kurir Reguler",
+        steps: [
+          { step: 1, label: "Pesanan Dibuat", status: "done" },
+          { step: 2, label: "Diproses Toko", status: "active" },
+          { step: 3, label: "Dalam Pengiriman", status: "pending" },
+          { step: 4, label: "Tiba di Tujuan", status: "pending" }
+        ]
+      }
     })
+
+    // SEND NOTIFICATIONS
+    const batch = adminDb.batch()
+    
+    // Notify Store
+    if (storeUid) {
+      batch.set(adminDb.collection("notifications").doc(), {
+        userId: storeUid,
+        type: "order",
+        title: "Pesanan Baru Masuk!",
+        message: `Ada pesanan baru ${newOrder.id} untuk ${newOrder.productName}. Segera proses pesanan ini.`,
+        isRead: false,
+        actionText: "Proses Pesanan",
+        createdAt: new Date()
+      })
+    }
+
+    // Notify Buyer
+    if (buyerUid) {
+      batch.set(adminDb.collection("notifications").doc(), {
+        userId: buyerUid,
+        type: "order",
+        title: "Pesanan Berhasil Dibuat",
+        message: `Pesanan ${newOrder.id} untuk ${newOrder.productName} telah berhasil dibuat dan diteruskan ke penjual.`,
+        isRead: false,
+        actionText: "Lihat Transaksi",
+        createdAt: new Date()
+      })
+    }
+    
+    await batch.commit()
 
     return NextResponse.json({ success: true, orderId: newOrder.id })
     

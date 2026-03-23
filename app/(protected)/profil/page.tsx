@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Crown,
+  Edit2,
 } from "lucide-react"
 import { screenToPath, type Screen } from "@/types/navigation"
 import BottomNav from "@/components/layout/BottomNav"
@@ -165,7 +166,14 @@ export default function ProfilPage() {
           >
             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
-          <h1 className="text-base sm:text-lg font-bold text-white">Profil Saya</h1>
+          <h1 className="text-base sm:text-lg font-bold text-white flex-1">Profil Saya</h1>
+          <button
+            onClick={() => router.push("/profil/edit")}
+            className="text-white hover:opacity-80 transition-opacity flex items-center gap-1.5 text-sm bg-white/20 px-3 py-1.5 rounded-full"
+          >
+            <Edit2 className="w-3.5 h-3.5" />
+            <span className="font-medium hidden sm:inline">Edit</span>
+          </button>
         </div>
       </div>
 

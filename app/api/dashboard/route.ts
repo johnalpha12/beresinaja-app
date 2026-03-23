@@ -42,6 +42,20 @@ type DashboardActionRequest =
       action?: "technician.rejectOrder"
       orderId?: string
     }
+  | {
+      action?: "technician.completeOrder"
+      orderId?: string
+      notes?: string
+      additionalCost?: string | number
+    }
+  | {
+      action?: "store.editProduct"
+      productData?: any
+    }
+  | {
+      action?: "store.deleteProduct"
+      productData?: any
+    }
 
 function getBearerToken(request: NextRequest) {
   const authorization = request.headers.get("authorization") || ""
@@ -358,6 +372,7 @@ export async function POST(request: NextRequest) {
         })
       } else if (body.action === "store.processOrder") {
         const orderId = body.orderId?.trim()
+        const trackingNumber = (body as any).trackingNumber?.trim()
 
         if (!orderId) {
           return NextResponse.json(
@@ -379,9 +394,99 @@ export async function POST(request: NextRequest) {
           ...dashboard,
           pendingOrders: dashboard.pendingOrders.map((order) =>
             order.id === orderId
-              ? { ...order, status: "processing" }
+              ? { ...order, status: "shipped" }
               : order
           ),
+        }
+
+        try {
+          // Update status di public collection `orders`
+          const orderDocRef = adminDb.collection("orders").doc(orderId)
+          await orderDocRef.update({
+            status: "shipped",
+            trackingNumber: trackingNumber || "-",
+            "tracking.statusBadge": "Dikirim",
+            "tracking.statusLabel": "Pesanan dalam perjalanan",
+            "tracking.receiptNumber": trackingNumber || "-",
+            "tracking.courier": "Kurir Reguler",
+            "tracking.steps": [
+               { step: 1, label: "Pesanan Dibuat", status: "done" },
+               { step: 2, label: "Diproses Toko", status: "done" },
+               { step: 3, label: "Dalam Pengiriman", status: "active", desc: `Resi: ${trackingNumber || "-"}` },
+               { step: 4, label: "Tiba di Tujuan", status: "pending" }
+            ]
+          })
+
+          const orderDoc = await orderDocRef.get()
+          if (orderDoc.exists) {
+            const data = orderDoc.data()
+            if (data?.userId) {
+              await adminDb.collection("notifications").add({
+                userId: data.userId,
+                type: "order",
+                title: "Pesanan Dalam Proses Pengiriman",
+                message: `Pesanan ${orderId} sedang dikirim. Resi: ${trackingNumber || "-"}`,
+                isRead: false,
+                actionText: "Lacak",
+                createdAt: new Date()
+              })
+            }
+          }
+        } catch (e) {
+          console.error("Gagal mengupdate orders doc:", e)
+        }
+      } else if (body.action === "store.editProduct") {
+        const productData = body.productData || {}
+        const productId = productData.id
+
+        if (!productId) {
+          return NextResponse.json({ error: "Product ID wajib diisi." }, { status: 400 })
+        }
+
+        const productIndex = dashboard.topProducts.findIndex(p => p.id === productId)
+        if (productIndex !== -1) {
+          dashboard.topProducts[productIndex] = {
+            ...dashboard.topProducts[productIndex],
+            name: productData.name,
+            price: `Rp ${new Intl.NumberFormat("id-ID").format(Number(productData.price) || 0)}`,
+            stock: Number(productData.stock) || 0,
+          }
+        }
+
+        dashboard = {
+          ...dashboard,
+          topProducts: [...dashboard.topProducts],
+        }
+
+        try {
+          await adminDb.collection("products").doc(productId).update({
+            name: productData.name,
+            price: Number(productData.price) || 0,
+            description: productData.description || `Produk dari ${dashboard.summary.name}.`,
+          })
+        } catch (e) {
+          console.error("Gagal mengupdate product doc:", e)
+        }
+      } else if (body.action === "store.deleteProduct") {
+        const productId = body.productData?.id
+
+        if (!productId) {
+          return NextResponse.json({ error: "Product ID wajib diisi." }, { status: 400 })
+        }
+
+        dashboard = {
+          ...dashboard,
+          summary: {
+            ...dashboard.summary,
+            totalProducts: Math.max(0, dashboard.summary.totalProducts - 1)
+          },
+          topProducts: dashboard.topProducts.filter(p => p.id !== productId)
+        }
+
+        try {
+          await adminDb.collection("products").doc(productId).delete()
+        } catch (e) {
+          console.error("Gagal menghapus product doc:", e)
         }
       } else {
         return NextResponse.json(
@@ -427,6 +532,29 @@ export async function POST(request: NextRequest) {
         }
 
         dashboard = nextDashboard
+
+        try {
+          const serviceDocRef = adminDb.collection("serviceOrders").doc(orderId)
+          await serviceDocRef.update({ status: "accepted" })
+          
+          const serviceDoc = await serviceDocRef.get()
+          if (serviceDoc.exists) {
+            const data = serviceDoc.data()
+            if (data?.userId) {
+               await adminDb.collection("notifications").add({
+                userId: data.userId,
+                type: "service",
+                title: "Teknisi Menuju Lokasi",
+                message: `Teknisi ${displayName} telah menerima order servis Anda.`,
+                isRead: false,
+                actionText: "Lacak",
+                createdAt: new Date()
+              })
+            }
+          }
+        } catch(e) {
+          console.error("Gagal sync acceptOrder:", e)
+        }
       } else if (body.action === "technician.rejectOrder") {
         const orderId = body.orderId?.trim()
 
@@ -452,6 +580,82 @@ export async function POST(request: NextRequest) {
         }
 
         dashboard = nextDashboard
+
+        try {
+          const serviceDocRef = adminDb.collection("serviceOrders").doc(orderId)
+          await serviceDocRef.update({ status: "rejected" })
+
+          const serviceDoc = await serviceDocRef.get()
+          if (serviceDoc.exists) {
+            const data = serviceDoc.data()
+            if (data?.userId) {
+               await adminDb.collection("notifications").add({
+                userId: data.userId,
+                type: "alert",
+                title: "Order Servis Dibatalkan",
+                message: `Mohon maaf, teknisi ${displayName} tidak dapat menerima order Anda.`,
+                isRead: false,
+                createdAt: new Date()
+              })
+            }
+          }
+        } catch(e) {
+          console.error("Gagal sync rejectOrder:", e)
+        }
+      } else if (body.action === "technician.completeOrder") {
+        const orderId = body.orderId?.trim()
+        const notes = (body as any).notes || ""
+        const additionalCost = (body as any).additionalCost || ""
+
+        if (!orderId) {
+          return NextResponse.json({ error: "Order ID wajib diisi." }, { status: 400 })
+        }
+
+        const targetOrder = dashboard.orders.active.find(o => o.id === orderId)
+        if (!targetOrder) {
+           return NextResponse.json({ error: "Order aktif teknisi tidak ditemukan." }, { status: 404 })
+        }
+
+        const completedOrder: TechnicianDashboardOrder = {
+          ...targetOrder,
+          status: "completed"
+        }
+
+        dashboard = {
+          ...dashboard,
+          orders: {
+            ...dashboard.orders,
+            active: dashboard.orders.active.filter(o => o.id !== orderId),
+            history: [completedOrder, ...dashboard.orders.history]
+          }
+        }
+
+        try {
+          const serviceDocRef = adminDb.collection("serviceOrders").doc(orderId)
+          await serviceDocRef.update({
+            status: "completed",
+            technicianNotes: notes,
+            additionalCost: String(additionalCost)
+          })
+
+          const serviceDoc = await serviceDocRef.get()
+          if (serviceDoc.exists) {
+            const data = serviceDoc.data()
+            if (data?.userId) {
+               await adminDb.collection("notifications").add({
+                userId: data.userId,
+                type: "service",
+                title: "Servis Selesai",
+                message: `Servis oleh teknisi ${displayName} telah selesai. Silakan berikan ulasan!`,
+                isRead: false,
+                actionText: "Beri Ulasan",
+                createdAt: new Date()
+              })
+            }
+          }
+        } catch(e) {
+          console.error("Gagal sync completeOrder:", e)
+        }
       } else {
         return NextResponse.json(
           { error: "Aksi dashboard teknisi tidak valid." },

@@ -7,7 +7,10 @@ import type { Screen } from "@/types/navigation"
 import { screenToPath } from "@/types/navigation"
 import { StatusChip } from "@/components/ui/StatusChip"
 import { PageLoader } from "@/components/ui/PageLoader"
-
+import { useAuth } from "@/context/AuthContext"
+import { db } from "@/lib/firebase"
+import { doc, getDoc, setDoc } from "firebase/firestore"
+import { useCart } from "@/components/context/CartContext"
 type ProductDetail = {
   name: string
   price: number
@@ -25,6 +28,7 @@ type ProductDetail = {
     successRate: string
     verified: boolean
   }
+  storeUid?: string
 }
 
 function DetailProdukContent() {
@@ -32,9 +36,45 @@ function DetailProdukContent() {
   const searchParams = useSearchParams()
   const productIdQuery = searchParams.get("id")
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
+  const { user } = useAuth()
   const [liked, setLiked] = useState(false)
   const [product, setProduct] = useState<ProductDetail | null>(null)
   const [loading, setLoading] = useState(true)
+  const { addToCart } = useCart()
+
+  const handleAddToCart = () => {
+    if (!product) return;
+    addToCart({
+      id: productIdQuery || "p1",
+      name: product.name,
+      variant: product.conditionBadge || "Baru",
+      price: product.price,
+      quantity: 1,
+      image: "📱",
+    });
+    router.push("/keranjang")
+  }
+
+  const startChat = async () => {
+    if (!user || !product?.storeUid) return;
+    const storeUid = product.storeUid;
+    const chatId = [user.uid, storeUid].sort().join('_');
+    const chatRef = doc(db, "chats", chatId);
+    const snap = await getDoc(chatRef);
+    if (!snap.exists()) {
+      await setDoc(chatRef, {
+        participants: [user.uid, storeUid],
+        participantNames: {
+          [user.uid]: user.email?.split("@")[0] || user.displayName || "Pembeli",
+          [storeUid]: product.store?.name || "Toko",
+        },
+        lastMessage: "Percakapan baru dibuat",
+        lastMessageTime: Date.now(),
+        unreadCount: { [storeUid]: 0, [user.uid]: 0 }
+      });
+    }
+    router.push(`/chat/${chatId}`);
+  };
 
   useEffect(() => {
     async function loadProduct() {
@@ -94,6 +134,9 @@ function DetailProdukContent() {
         </button>
 
         <div className="flex items-center gap-4">
+          <button onClick={() => router.push("/keranjang")} className="relative text-foreground hover:text-primary transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>
+          </button>
           <button>
             <Share2 className="w-5 h-5 text-foreground" />
           </button>
@@ -242,13 +285,23 @@ function DetailProdukContent() {
       {/* BOTTOM ACTION */}
       <div className="sticky bottom-0 bg-background border-t border-border px-4 md:px-8 lg:px-16 py-4">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-4">
-          <button className="flex-1 border-2 border-primary text-primary font-semibold rounded-xl py-3 hover:bg-secondary transition">
-            Chat Toko
+          <button 
+            onClick={startChat}
+            className="flex-1 border-2 border-primary text-primary font-semibold rounded-xl py-3 hover:bg-secondary transition px-2 text-sm"
+          >
+            Chat
+          </button>
+
+          <button 
+            onClick={handleAddToCart}
+            className="flex-1 border-2 border-primary text-primary font-semibold rounded-xl py-3 hover:bg-secondary transition px-2 text-sm"
+          >
+            + Keranjang
           </button>
 
           <button
             onClick={() => router.push(`/checkout?productId=${productIdQuery || "p1"}`)}
-            className="flex-1 bg-primary text-primary-foreground font-semibold rounded-xl py-3 hover:opacity-90 transition"
+            className="flex-[2] bg-primary text-primary-foreground font-semibold rounded-xl py-3 hover:opacity-90 transition px-2 text-sm"
           >
             Beli Sekarang
           </button>
