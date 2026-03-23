@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
   ArrowLeft,
   MapPin,
@@ -25,6 +25,7 @@ type ShippingMethod = "regular" | "express"
 type PaymentMethod = "bank" | "ewallet" | "cod"
 
 type CheckoutProduct = {
+  id?: string
   name: string
   variant: string
   price: number
@@ -228,10 +229,19 @@ function buildSeedAddresses(data: CheckoutResponse) {
   ]
 }
 
-export default function CheckoutPage() {
+function CheckoutContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const productIdQuery = searchParams.get("productId")
   const onBack = () => router.back()
-  const onSuccess = () => router.push(screenToPath("orderSuccess"))
+  const onSuccess = (orderId?: string) => {
+    const baseUrl = screenToPath("orderSuccess")
+    if (orderId) {
+      router.push(`${baseUrl}?orderId=${orderId}`)
+    } else {
+      router.push(baseUrl)
+    }
+  }
 
   const [shippingMethod, setShippingMethod] =
     useState<ShippingMethod>("regular")
@@ -257,9 +267,14 @@ export default function CheckoutPage() {
     async function loadCheckout() {
       try {
         setLoading(true)
-        const response = await fetch("/api/content/checkout", {
-          cache: "no-store",
-        })
+        const [response, productRes] = await Promise.all([
+          fetch("/api/content/checkout", {
+            cache: "no-store",
+          }),
+          productIdQuery 
+            ? fetch(`/api/products/${productIdQuery}`, { cache: "no-store" }) 
+            : Promise.resolve(null)
+        ])
 
         if (!response.ok) {
           throw new Error("Gagal memuat data checkout.")
@@ -279,7 +294,20 @@ export default function CheckoutPage() {
           nextAddresses[0]?.id ||
           ""
 
-        setProduct(data.product || null)
+        if (productRes && productRes.ok) {
+          const prodData = await productRes.json()
+          setProduct({
+            id: prodData.id,
+            name: prodData.name || "Produk",
+            variant: prodData.conditionBadge || "Baru",
+            price: prodData.price || 0,
+            quantity: 1,
+            image: prodData.imageEmoji || "📱"
+          })
+        } else {
+          setProduct(data.product || null)
+        }
+
         setAddresses(nextAddresses)
         setSelectedAddressId(nextSelectedAddressId)
         setShippingOptions(data.shippingOptions || [])
@@ -447,18 +475,47 @@ export default function CheckoutPage() {
     closeAddressForm()
   }
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!activeAddress) {
       setAddressError("Tambahkan atau pilih alamat pengiriman terlebih dahulu.")
       setIsAddressFormOpen(true)
       return
     }
 
+    if (!product?.id) {
+      setIsProcessing(true)
+      setTimeout(() => {
+        setIsProcessing(false)
+        onSuccess()
+      }, 2000)
+      return
+    }
+
     setIsProcessing(true)
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: product.id,
+          productName: product.name,
+          quantity: product.quantity,
+          totalPrice: total,
+          paymentMethod: paymentOptions.find(p => p.id === paymentMethod)?.name || "Transfer Bank",
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Checkout gagal")
+      }
+      
+      const responseData = await res.json();
+      onSuccess(responseData.orderId)
+    } catch (e) {
+      alert("Gagal memproses checkout.")
+    } finally {
       setIsProcessing(false)
-      onSuccess()
-    }, 2000)
+    }
   }
 
   const iconMap = {
@@ -899,5 +956,13 @@ export default function CheckoutPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<PageLoader message="Memuat checkout..." />}>
+      <CheckoutContent />
+    </Suspense>
   )
 }

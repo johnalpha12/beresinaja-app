@@ -1,8 +1,8 @@
 "use client"
 
 import { ArrowLeft, MapPin, Share2, Heart, Star, ShieldCheck } from "lucide-react"
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { Screen } from "@/types/navigation"
 import { screenToPath } from "@/types/navigation"
 import { StatusChip } from "@/components/ui/StatusChip"
@@ -27,8 +27,10 @@ type ProductDetail = {
   }
 }
 
-export default function DetailProdukPage() {
+function DetailProdukContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const productIdQuery = searchParams.get("id")
   const navigate = (screen: Screen) => router.push(screenToPath(screen))
   const [liked, setLiked] = useState(false)
   const [product, setProduct] = useState<ProductDetail | null>(null)
@@ -46,8 +48,7 @@ export default function DetailProdukPage() {
           ? ((await configResponse.json()) as { productId?: string })
           : null
 
-        const productId = configData?.productId || null
-        const targetId = productId || "p1"
+        const targetId = productIdQuery || configData?.productId || "p1"
 
         const productResponse = await fetch(
           `/api/products/${encodeURIComponent(targetId)}`,
@@ -68,7 +69,7 @@ export default function DetailProdukPage() {
     }
 
     loadProduct()
-  }, [])
+  }, [productIdQuery])
 
   const formatPrice = (price: number) =>
     new Intl.NumberFormat("id-ID", {
@@ -246,7 +247,7 @@ export default function DetailProdukPage() {
           </button>
 
           <button
-            onClick={() => navigate("checkout")}
+            onClick={() => router.push(`/checkout?productId=${productIdQuery || "p1"}`)}
             className="flex-1 bg-primary text-primary-foreground font-semibold rounded-xl py-3 hover:opacity-90 transition"
           >
             Beli Sekarang
@@ -254,5 +255,13 @@ export default function DetailProdukPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function DetailProdukPage() {
+  return (
+    <Suspense fallback={<PageLoader message="Memuat detail produk..." />}>
+      <DetailProdukContent />
+    </Suspense>
   )
 }

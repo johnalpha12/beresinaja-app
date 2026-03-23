@@ -8,6 +8,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  sendPasswordResetEmail,
 } from "firebase/auth"
 import { auth } from "./firebase"
 import type { UserData, UserRole } from "@/types/user"
@@ -367,4 +368,9 @@ export async function logoutUser() {
 /* LISTENER */
 export function subscribeToAuthChanges(callback: (user: User | null) => void) {
   return onAuthStateChanged(auth, callback)
+}
+
+/* RESET PASSWORD */
+export async function resetPassword(email: string) {
+  return sendPasswordResetEmail(auth, email)
 }

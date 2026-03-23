@@ -146,7 +146,7 @@ export default function ProfilPage() {
             <p className="text-muted-foreground">Memuat profil...</p>
           </div>
         </div>
-        <BottomNav active="profile" navigate={navigate} />
+        {!isBusinessRole && <BottomNav active="profile" navigate={navigate} />}
       </div>
     )
   }
@@ -324,7 +324,7 @@ export default function ProfilPage() {
         )}
       </div>
 
-      <BottomNav active="profile" navigate={navigate} />
+      {!isBusinessRole && <BottomNav active="profile" navigate={navigate} />}
     </div>
   )
 }

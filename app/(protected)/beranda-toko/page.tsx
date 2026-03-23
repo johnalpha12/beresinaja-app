@@ -28,6 +28,7 @@ import type {
   StoreDashboardOrder,
   StoreDashboardProduct,
 } from "@/types/dashboard"
+import AddProductScreen from "@/components/AddProductScreen"
 
 const storeStatMeta = [
   { icon: ShoppingCart, color: "#0288D1" },
@@ -50,6 +51,7 @@ export default function StoreHomePage() {
   const [dashboardError, setDashboardError] = useState("")
   const [actionLoading, setActionLoading] = useState("")
   const [actionError, setActionError] = useState("")
+  const [isAddingProduct, setIsAddingProduct] = useState(false)
 
   useEffect(() => {
     if (authLoading || !userData?.role) {
@@ -193,7 +195,7 @@ export default function StoreHomePage() {
 
   const mutateStoreDashboard = async (
     payload:
-      | { action: "store.addProduct" }
+      | { action: "store.addProduct"; productData?: any }
       | { action: "store.processOrder"; orderId: string }
   ) => {
     if (!user) {
@@ -223,6 +225,18 @@ export default function StoreHomePage() {
     } finally {
       setActionLoading("")
     }
+  }
+
+  if (isAddingProduct) {
+    return (
+      <AddProductScreen 
+        onBack={() => setIsAddingProduct(false)}
+        onSuccess={async (productData) => {
+          await mutateStoreDashboard({ action: "store.addProduct", productData })
+          setIsAddingProduct(false)
+        }}
+      />
+    )
   }
 
   return (
@@ -315,7 +329,7 @@ export default function StoreHomePage() {
       <div className="px-6 mb-6">
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => void mutateStoreDashboard({ action: "store.addProduct" })}
+            onClick={() => setIsAddingProduct(true)}
             disabled={actionLoading !== ""}
             className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] text-white rounded-2xl p-4 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-shadow disabled:opacity-60"
           >

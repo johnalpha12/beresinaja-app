@@ -1,8 +1,8 @@
 "use client";
 
 import { CheckCircle2, MapPin, Clock, ArrowRight } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { PrimaryButton } from "@/components/ui/PrimaryButton";
 import { OutlineButton } from "@/components/ui/OutlineButton";
 import { PageLoader } from "@/components/ui/PageLoader";
@@ -17,8 +17,10 @@ type OrderInfo = {
   paymentMethod: string;
 };
 
-export default function PesananBerhasilPage() {
+function PesananBerhasilContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const orderIdQuery = searchParams.get("orderId");
   const [orderInfo, setOrderInfo] = useState<OrderInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,8 @@ export default function PesananBerhasilPage() {
     async function loadOrder() {
       try {
         setLoading(true);
-        const response = await fetch("/api/orders/sample", {
+        const endpoint = orderIdQuery ? `/api/orders/${orderIdQuery}` : "/api/orders/sample";
+        const response = await fetch(endpoint, {
           cache: "no-store",
         });
 
@@ -34,8 +37,8 @@ export default function PesananBerhasilPage() {
           throw new Error("Gagal memuat data pesanan.");
         }
 
-        const data = (await response.json()) as { summary?: OrderInfo };
-        setOrderInfo(data.summary || null);
+        const data = await response.json();
+        setOrderInfo(orderIdQuery ? data : (data.summary || null));
       } catch (error) {
         console.error("Failed to load order success data:", error);
       } finally {
@@ -176,4 +179,12 @@ export default function PesananBerhasilPage() {
       </div>
     </div>
   );
+}
+
+export default function PesananBerhasilPage() {
+  return (
+    <Suspense fallback={<PageLoader message="Memuat ringkasan pesanan..." />}>
+      <PesananBerhasilContent />
+    </Suspense>
+  )
 }

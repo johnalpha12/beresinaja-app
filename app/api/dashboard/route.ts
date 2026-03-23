@@ -27,7 +27,8 @@ type AuthenticatedUser = {
 
 type DashboardActionRequest =
   | {
-      action?: "store.addProduct"
+      action?: "store.addProduct",
+      productData?: any
     }
   | {
       action?: "store.processOrder"
@@ -300,9 +301,21 @@ export async function POST(request: NextRequest) {
       let dashboard = normalizeStoreDashboard(docSnap.data(), displayName)
 
       if (body.action === "store.addProduct") {
+        const productData = body.productData || {}
         const productRef = adminDb.collection("products").doc()
-        const nextProduct = createStoreProductDraft(dashboard, productRef.id)
         const totalProducts = dashboard.summary.totalProducts + 1
+
+        const nextProduct: StoreDashboardProduct = {
+          id: productRef.id,
+          name: productData.name || `Produk Baru ${totalProducts}`,
+          image: "📱",
+          price: `Rp ${new Intl.NumberFormat("id-ID").format(Number(productData.price) || 0)}`,
+          stock: Number(productData.stock) || 0,
+          sold: 0,
+          views: 0,
+          rating: dashboard.summary.rating,
+          status: "active",
+        }
 
         dashboard = {
           ...dashboard,
@@ -316,16 +329,17 @@ export async function POST(request: NextRequest) {
 
         await productRef.set({
           name: nextProduct.name,
-          price: 1250000 + totalProducts * 50000,
+          price: Number(productData.price) || 0,
           rating: nextProduct.rating,
           reviews: 0,
           sold: nextProduct.sold,
-          conditionBadge: "Baru",
-          description: `Produk baru dari ${dashboard.summary.name}.`,
-          specs: [
-            { label: "Kategori", value: "Aksesoris" },
-            { label: "Kondisi", value: "Baru" },
-          ],
+          conditionBadge: productData.condition === "new" ? "Baru" : "Bekas",
+          description: productData.description || `Produk baru dari ${dashboard.summary.name}.`,
+          specs: productData.specifications
+            ? productData.specifications.map((s: any) => ({ label: s.key, value: s.value }))
+            : [
+                { label: "Kategori", value: productData.category || "Aksesoris" },
+              ],
           store: {
             name: dashboard.summary.name,
             rating: dashboard.summary.rating,
@@ -334,11 +348,12 @@ export async function POST(request: NextRequest) {
             successRate: "100%",
             verified: true,
           },
+          storeUid: authenticatedUser.uid,
           seller: dashboard.summary.name,
           distance: "0 km",
-          badge: "Baru",
-          category: "Aksesoris",
-          condition: "Baru",
+          badge: productData.condition === "new" ? "Baru" : "Bekas",
+          category: productData.category || "Aksesoris",
+          condition: productData.condition || "new",
           imageEmoji: nextProduct.image,
         })
       } else if (body.action === "store.processOrder") {

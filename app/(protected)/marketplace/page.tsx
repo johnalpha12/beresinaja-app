@@ -195,7 +195,7 @@ export default function MarketplacePage() {
           {filtered.map((product) => (
             <button
               key={product.id}
-              onClick={() => navigate("productDetail")}
+              onClick={() => router.push(`/detail-produk?id=${product.id}`)}
               className="bg-card rounded-2xl border border-border overflow-hidden hover:shadow-md transition text-left"
             >
               <div className="relative bg-[#F5F7FA] flex items-center justify-center aspect-square">
