@@ -25,6 +25,7 @@ import type {
   TechnicianDashboardData,
   TechnicianDashboardOrder,
 } from "@/types/dashboard"
+import { NotificationScreen } from "@/components/NotificationScreen"
 
 const technicianStatMeta = [
   { icon: Calendar, color: "#0288D1" },
@@ -49,6 +50,7 @@ export default function TechnicianHomePage() {
   const [dashboardError, setDashboardError] = useState("")
   const [actionLoading, setActionLoading] = useState("")
   const [actionError, setActionError] = useState("")
+  const [isViewingNotifications, setIsViewingNotifications] = useState(false)
 
   useEffect(() => {
     if (authLoading || !userData?.role) {
@@ -178,6 +180,10 @@ export default function TechnicianHomePage() {
     }
   }
 
+  if (isViewingNotifications) {
+    return <NotificationScreen role="teknisi" onBack={() => setIsViewingNotifications(false)} />
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <div className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] px-6 pt-6 pb-8">
@@ -186,7 +192,10 @@ export default function TechnicianHomePage() {
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
-            <button className="text-white p-2 hover:bg-white/10 rounded-full relative">
+            <button 
+              onClick={() => setIsViewingNotifications(true)}
+              className="text-white p-2 hover:bg-white/10 rounded-full relative"
+            >
               <Bell className="w-6 h-6" />
               <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </button>

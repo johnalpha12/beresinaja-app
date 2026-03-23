@@ -29,6 +29,8 @@ import type {
   StoreDashboardProduct,
 } from "@/types/dashboard"
 import AddProductScreen from "@/components/AddProductScreen"
+import { StoreStatsScreen } from "@/components/StoreStatsScreen"
+import { NotificationScreen } from "@/components/NotificationScreen"
 
 const storeStatMeta = [
   { icon: ShoppingCart, color: "#0288D1" },
@@ -52,6 +54,8 @@ export default function StoreHomePage() {
   const [actionLoading, setActionLoading] = useState("")
   const [actionError, setActionError] = useState("")
   const [isAddingProduct, setIsAddingProduct] = useState(false)
+  const [isViewingStats, setIsViewingStats] = useState(false)
+  const [isViewingNotifications, setIsViewingNotifications] = useState(false)
 
   useEffect(() => {
     if (authLoading || !userData?.role) {
@@ -239,6 +243,19 @@ export default function StoreHomePage() {
     )
   }
 
+  if (isViewingStats && dashboard) {
+    return (
+      <StoreStatsScreen 
+        dashboardData={dashboard}
+        onBack={() => setIsViewingStats(false)}
+      />
+    )
+  }
+
+  if (isViewingNotifications) {
+    return <NotificationScreen role="toko" onBack={() => setIsViewingNotifications(false)} />
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col">
       <div className="bg-gradient-to-br from-[#0288D1] to-[#4FC3F7] px-6 pt-6 pb-8">
@@ -247,7 +264,10 @@ export default function StoreHomePage() {
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-3">
-            <button className="text-white p-2 hover:bg-white/10 rounded-full relative">
+            <button 
+              onClick={() => setIsViewingNotifications(true)}
+              className="text-white p-2 hover:bg-white/10 rounded-full relative"
+            >
               <Bell className="w-6 h-6" />
               <div className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
             </button>
@@ -338,7 +358,10 @@ export default function StoreHomePage() {
               {actionLoading === "add-product" ? "Menyimpan..." : "Tambah Produk"}
             </span>
           </button>
-          <button className="bg-white text-[#0288D1] border-2 border-[#0288D1] rounded-2xl p-4 flex items-center justify-center gap-2 hover:bg-[#0288D1]/5 transition-colors">
+          <button 
+            onClick={() => setIsViewingStats(true)}
+            className="bg-white text-[#0288D1] border-2 border-[#0288D1] rounded-2xl p-4 flex items-center justify-center gap-2 hover:bg-[#0288D1]/5 transition-colors"
+          >
             <BarChart3 className="w-5 h-5" />
             <span className="text-sm">Lihat Statistik</span>
           </button>

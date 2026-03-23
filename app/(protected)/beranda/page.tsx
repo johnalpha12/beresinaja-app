@@ -24,6 +24,7 @@ import {
 import BottomNav from "@/components/layout/BottomNav"
 import { PageLoader } from "@/components/ui/PageLoader"
 import { useUserData } from "@/hooks/useUserData"
+import { NotificationScreen } from "@/components/NotificationScreen"
 
 type ServiceItem = {
   key: ScreenLike
@@ -62,6 +63,7 @@ export default function BerandaPage() {
   const [recommendedTechnicians, setRecommendedTechnicians] = useState<Technician[]>([])
   const [promo, setPromo] = useState<Promo | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isViewingNotifications, setIsViewingNotifications] = useState(false)
 
   useEffect(() => {
     if (!authLoading && userData?.role === "teknisi") {
@@ -129,6 +131,10 @@ export default function BerandaPage() {
     return <PageLoader message="Memuat beranda..." />
   }
 
+  if (isViewingNotifications) {
+    return <NotificationScreen role="pengguna" onBack={() => setIsViewingNotifications(false)} />
+  }
+
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       <header className="sticky top-0 z-50 bg-background shadow-sm px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6 lg:pt-8 pb-3">
@@ -157,7 +163,10 @@ export default function BerandaPage() {
                 <MessageCircle className="w-6 h-6 text-primary" />
               </button>
 
-              <button className="relative p-2 hover:bg-primary/10 rounded-full">
+              <button 
+                onClick={() => setIsViewingNotifications(true)}
+                className="relative p-2 hover:bg-primary/10 rounded-full"
+              >
                 <Bell className="w-6 h-6 text-primary" />
                 <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-background" />
               </button>
